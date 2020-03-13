@@ -1,0 +1,19 @@
+sudo: false
+
+language: scala
+
+jdk:
+  - openjdk8
+
+cache:
+  directories:
+  - $HOME/.ivy2
+  - $HOME/.sbt
+
+jobs:
+  include:
+    - script: "sbt +test"
+    - stage: publish
+      name: Publish
+      if: tag IS present
+      script: "sbt +publish"
