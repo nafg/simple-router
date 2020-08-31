@@ -1,5 +1,3 @@
-sudo: false
-
 language: scala
 
 jdk:
@@ -7,17 +5,17 @@ jdk:
 
 cache:
   directories:
-  - $HOME/.ivy2
-  - $HOME/.sbt
+    - $HOME/.ivy2
+    - $HOME/.sbt
 
 env:
   - SCALAJS_VERSION=0.6.33
   - SCALAJS_VERSION=1.1.1
 
-jobs:
-  include:
-    - script: "sbt +test"
-    - stage: publish
-      name: Publish
-      if: tag IS present
-      script: "sbt +publish"
+script: "sbt +test"
+
+deploy:
+  provider: script
+  script: sbt +publish
+  on:
+    tags: true
