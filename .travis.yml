@@ -8,10 +8,6 @@ cache:
     - $HOME/.ivy2
     - $HOME/.sbt
 
-env:
-  - SCALAJS_VERSION=0.6.33
-  - SCALAJS_VERSION=1.1.1
-
 script: "sbt +test"
 
 deploy:
