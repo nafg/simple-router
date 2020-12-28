@@ -6,6 +6,10 @@ ThisBuild / crossScalaVersions := Seq("2.12.12", "2.13.4")
 ThisBuild / scalaVersion := (ThisBuild / crossScalaVersions).value.last
 ThisBuild / scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature")
 
+ThisBuild / githubWorkflowTargetTags ++= Seq("v*")
+ThisBuild / githubWorkflowPublishTargetBranches := Seq(RefPredicate.StartsWith(Ref.Tag("v")))
+ThisBuild / githubWorkflowEnv ++= List("BINTRAYKEY").map(envKey => envKey -> s"$${{ secrets.$envKey }}").toMap
+
 lazy val core =
   crossProject(JVMPlatform, JSPlatform).crossType(CrossType.Full)
     .in(file("."))
