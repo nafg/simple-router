@@ -2,7 +2,7 @@ import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 
 ThisBuild / organization := "io.github.nafg.simple-router"
-ThisBuild / crossScalaVersions := Seq("2.12.12", "2.13.3")
+ThisBuild / crossScalaVersions := Seq("2.12.12", "2.13.4")
 ThisBuild / scalaVersion := (ThisBuild / crossScalaVersions).value.last
 ThisBuild / scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature")
 
@@ -23,7 +23,7 @@ lazy val core =
         )
       ),
       libraryDependencies ++= Seq(
-        "org.scalatest" %% "scalatest" % "3.2.2" % Test,
-        "org.scalatestplus" %% "scalacheck-1-14" % "3.2.2.0" % Test
+        "org.scalatest" %% "scalatest" % "3.2.3" % Test,
+        "org.scalatestplus" %% "scalacheck-1-15" % "3.2.3.0" % Test
       )
     )
