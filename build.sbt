@@ -13,6 +13,6 @@ lazy val core =
       name := "core",
       libraryDependencies ++= Seq(
         "org.scalatest" %% "scalatest" % "3.2.6" % Test,
-        "org.scalatestplus" %% "scalacheck-1-15" % "3.2.6.0" % Test
+        "org.scalatestplus" %% "scalacheck-1-15" % "3.2.7.0" % Test
       )
     )
