@@ -1,189 +1,132 @@
 package simplerouter
 
+import simplerouter.Tuples.{->, Any_->:}
+
 private class Extractor[-A, +B](f: A => Option[B]) {
   def unapply(a: A): Option[B] = f(a)
 }
 
-/**
- * Provides the DSL, in conjunction with the package object
- *
- * @example {{{
- *   "lit" :/: arg[Int] :&: param[String]("q") >> { i => s => (i, s) }
- *   // is equivalent to
- *   new PathRoute(PLit("lit", PArg(arg[Int], PParam[String]("q"))), { case i => case s => (i, s) })
- * }}}
- * @note You only have to import reactive.routing._ -- the implicits here are found
- *       automatically since scala looks in the companion object.
- */
-object Path {
+/** A path is a typesafe URL template. It consists of a chain of typed components, (path components and query
+  * parameters) which may be fixed strings, or string representations of some value
+  *
+  * @tparam A
+  *   the type of data encoded in this `Path`
+  */
+sealed trait Path[A] {
+  protected[simplerouter] def encode: A => Location => Location
 
-  trait PathRouteOpsBase[R <: RouteType] {
-    def path: Path[R]
+  /** Returns the [[Location]] representing `param`
+    */
+  final def build(param: A): Location = encode(param)(Location(Nil))
 
-    def >>?[A](rte: R#Route[A])(implicit mapRoute: CanLiftRouteMapping[R]): PathRoute[R, A] =
-      new PathRoute[R, A](path, rte)
-    def >>[A](rte: R#Func[A])(implicit mapRoute: CanLiftRouteMapping[R], lift: FnToPF[R]): PathRoute[R, A] =
-      new PathRoute[R, A](path, lift(rte))
-  }
+  def parse: Location => Option[A]
 
-  trait PathComponentOpsBase[R <: RouteType] {
-    def path: Path[R]
-
-    def :/:(s: String): PLit[R] = PLit[R](s, path)
-
-    def :/:[A](arg: Arg[A]): PArg[A, R] = PArg[A, R](arg, path)
-  }
-
-  trait PathParamOpsBase[R <: RouteType] {
-    def path: Path[R]
-
-    def :&:(s: String): PLit[R] = PLit[R](s, path)
-
-    def :&:[A](arg: Arg[A]): PArg[A, R] = PArg[A, R](arg, path)
-
-    def :&:[A](p: Param[A]): PParam[A, R] = PParam[A, R](p, path)
-
-    def :&:[A](p: Params[A]): PParams[A, R] = PParams[A, R](p, path)
-  }
-
-  implicit class PathOps[R <: RouteType](val path: Path[R]) extends PathRouteOpsBase[R]
-
-  implicit class PSegmentBaseOps[R <: RouteType](val path: PSegmentBase[R]) extends PathComponentOpsBase[R]
-
-  implicit class PParamBaseOps[R <: RouteType](val path: PParamBase[R]) extends PathParamOpsBase[R]
+  /** Given a route value, returns a `PartialFunction` that parses a [[Location]] and passes the parameters to the route
+    * value, if applicable
+    */
+  final def run[R](handler: A => Option[R]): Location => Option[R] = parse(_).flatMap(handler)
 }
 
-class Arg[A](val stringable: Stringable[A])
-class Param[A](val key: String, val stringable: Stringable[A])
-class Params[A](val key: String, val stringable: Stringable[A])
+object Path extends PathCompanionImplicits {
+  val empty                  = Segment.Empty
+  def apply(literal: String) = Segment.Literal(literal, empty)
 
-/**
- * A path is a typesafe URL template.
- * It consists of a chain of typed components,
- * (path components and query parameters)
- * which may be fixed strings, or string
- * representations of some value
- * @tparam RT the [[RouteType]] that determines the structure of the route.
- * It depends directly on the actual `Path` chain.
- */
-sealed trait Path[RT <: RouteType] {
-  protected[simplerouter] def encode(location: Location): RT#EncodeFunc
+  sealed trait Segment[A] extends Path[A]
+  object Segment {
 
-  /**
-   * Returns a [[Location]], or a curried function returning a Location,
-   * depending on the [[RouteType]]
-   */
-  def construct: RT#EncodeFunc = encode(Location(Nil))
+    /** Every [[Path]] chain ends with [[Empty]] (the empty `Path`), or [[All]] ([[syntax.**]]). There is only one
+      * [[Empty]] instance, aliased as [[Empty]]. However, the DSL does not require you to actually write [[Empty]].
+      */
+    case object Empty extends Path.Segment[Unit] {
+      override protected[simplerouter] def encode = _ => identity
 
-  /**
-   * Given a route value, returns a `PartialFunction` that
-   * parses a [[Location]] and passes the parameters
-   * to the route value, if applicable
-   */
-  def run[R](route: RT#Route[R]): PartialFunction[Location, R]
-}
-
-sealed trait PSegmentBase[RT <: RouteType] extends Path[RT]
-
-/**
- * Every [[Path]] chain ends with `PNil`
- * (the empty `Path`), or [[PAny]] ([[**]]).
- * There is only one `PNil` instance,
- * aliased as `PNil`.
- * However the DSL does not require you to actually write `PNil`.
- */
-sealed trait PNil extends PSegmentBase[RConst] {
-  override def encode(l: Location): Location = l
-  override def run[R](r: R): PartialFunction[Location, R] = {
-    case loc if loc.path.isEmpty => r
-  }
-}
-
-private[simplerouter] case object PNil0 extends PNil
-
-/**
- * Every [[Path]] chain ends with [[PNil]],
- * or `PAny`. `PAny` represents all the
- * (remaining) url path components
- * as one `List[String]`.
- * There is only one `PAny` instance,
- * aliased as `PAny`.
- */
-// TODO no reason not to use an Arg-like typesafe bijection
-sealed trait PAny extends PSegmentBase[RFunc[List[String], RConst]] {
-  override def encode(l: Location): List[String] => Location = l ++ _
-  override def run[R](f: PartialFunction[List[String], R]): PartialFunction[Location, R] = {
-    case loc if f.isDefinedAt(loc.path) => f(loc.path)
-  }
-}
-
-private[simplerouter] case object PAny0 extends PAny
-
-/**
- * `PLit` is a fixed-string url path component. It
- * is not converted to or from a value.
- */
-case class PLit[NR <: RouteType](component: String, next: Path[NR]) extends PSegmentBase[NR] {
-  override def encode(l: Location): NR#EncodeFunc = next.encode(l :+ component)
-  override def run[R](f: NR#Route[R]): PartialFunction[Location, R] = {
-    case loc @ Location(`component` :: _, _) if next.run(f).isDefinedAt(loc.tail) =>
-      next.run(f)(loc.tail)
-  }
-}
-
-/**
- * `PArg` is a url path component that is converted to and
- * from a typed value. The actual conversion is provided by `arg`.
- */
-case class PArg[A, NR <: RouteType](arg: Arg[A], next: Path[NR]) extends PSegmentBase[RFunc[A, NR]] {
-  override def encode(l: Location): A => NR#EncodeFunc = a => next.encode(l :+ arg.stringable.format(a))
-  override def run[R](f: PartialFunction[A, NR#Route[R]]): PartialFunction[Location, R] = {
-    case loc @ Location(arg.stringable(a) :: _, _) if f.isDefinedAt(a) && next.run(f(a)).isDefinedAt(loc.tail) =>
-      next.run(f(a))(loc.tail)
-  }
-}
-
-/**
- * Marker trait, used by the DSL so that `:&:` is used rather than `:/:`
- */
-sealed trait PParamBase[NR <: RouteType] extends Path[NR]
-
-/**
- * `PParam` is an optional named url query parameter that is converted to and
- * from a typed value. The actual conversion is provided by `arg`.
- * The routing function receives None if the url does not contain the query parameter.
- * However if it contains it, but `param` does not parse it, then the `Path` does not match.
- */
-case class PParam[A, NR <: RouteType](param: Param[A], next: Path[NR]) extends PParamBase[RFunc[Option[A], NR]] {
-  private val locParam = new Extractor((_: Location).takeParam(param.key))
-
-  override def encode(l: Location): Option[A] => NR#EncodeFunc = { ao =>
-    val loc2 = ao match {
-      case None    => l
-      case Some(a) => l & ((param.key, param.stringable format a))
+      override def parse = {
+        case Location(Nil, _) => Some(())
+        case _                => None
+      }
     }
-    next.encode(loc2)
-  }
-  override def run[R](f: PartialFunction[Option[A], NR#Route[R]]): PartialFunction[Location, R] = {
-    case locParam(param.stringable(a), loc2) if f.isDefinedAt(Some(a)) && next.run(f(Some(a))).isDefinedAt(loc2) =>
-      next.run(f(Some(a)))(loc2)
-    case loc if loc.query.forall(_._1 != param.key) && f.isDefinedAt(None) && next.run(f(None)).isDefinedAt(loc) =>
-      next.run(f(None))(loc)
-  }
-}
 
-/**
- * `PParams` is a repeatable named url query parameter, each occurrence of which
- * is converted to and from a typed `List` of values. The actual conversion is provided by `arg`.
- */
-case class PParams[A, NR <: RouteType](params: Params[A], next: Path[NR]) extends PParamBase[RFunc[List[A], NR]] {
-  private val locParams = new Extractor((loc: Location) => Some(loc.takeParams(params.key)))
-  private val parseAll = new Extractor((xs: List[String]) => Some(xs.flatMap(params.stringable.parse(_))))
+    /** Every [[Path]] chain ends with [[Empty]], or [[All]]. `PAny` represents all the (remaining) url path components
+      * as one `List[String]`. There is only one `PAny` instance, aliased as `PAny`.
+      */
+    case object All extends Path.Segment[List[String] -> Unit] {
+      override protected[simplerouter] def encode = param => _ ++ param._1
 
-  override def encode(loc: Location): List[A] => NR#EncodeFunc =
-    as => next.encode(loc && ((params.key, as map params.stringable.format)))
-  override def run[R](f: PartialFunction[List[A], NR#Route[R]]): PartialFunction[Location, R] = {
-    case locParams(parseAll(as), loc2) if f.isDefinedAt(as) && next.run(f(as)).isDefinedAt(loc2) =>
-      next.run(f(as))(loc2)
+      override def parse: Location => Option[(List[String], Unit)] = loc => Some(loc.path ->: ())
+    }
+
+    /** [[Literal]] is a fixed-string url path component. It is not converted to or from a value.
+      */
+    case class Literal[A](component: String, next: Path[A]) extends Path.Segment[A] {
+      override protected[simplerouter] def encode = param => l => next.encode(param)(l :+ component)
+
+      override def parse: Location => Option[A] = {
+        case loc @ Location(`component` :: _, _) => next.parse(loc.tail)
+        case _                                   => None
+      }
+    }
+
+    /** [[Parameter]] is a url path component that is converted to and from a typed value. The actual conversion is
+      * provided by `arg`.
+      */
+    case class Parameter[A, B](param: Param.SegmentParam[A], next: Path[B]) extends Path.Segment[A -> B] {
+      override protected[simplerouter] def encode = { case a -> b =>
+        l => next.encode(b)(l :+ param.stringable.format(a))
+      }
+
+      override def parse: Location => Option[(A, B)] = {
+        case loc @ Location(param.stringable(a) :: _, _) => next.parse(loc.tail).map(a -> _)
+        case _                                           => None
+      }
+    }
+  }
+
+  /** Marker trait, used by the DSL so that `:&:` is used rather than `:/:` */
+  sealed trait QueryParameter[A] extends Path[A]
+  object QueryParameter {
+
+    /** An optional named url query parameter that is converted to and from a typed value. The actual conversion is
+      * provided by `arg`. The routing function receives None if the url does not contain the query parameter. However
+      * if it contains it, but `param` does not parse it, then the `Path` does not match.
+      */
+    case class Optional[A, B](param: Param.QueryParam[A], next: Path[B]) extends QueryParameter[Option[A] -> B] {
+      private val locParam = new Extractor((_: Location).takeParam(param.key))
+
+      override protected[simplerouter] def encode = { case ao -> b =>
+        l =>
+          val loc2 = ao match {
+            case None    => l
+            case Some(a) => l & ((param.key, param.stringable format a))
+          }
+          next.encode(b)(loc2)
+      }
+
+      override def parse: Location => Option[(Option[A], B)] = {
+        case locParam(param.stringable(a), loc2) => next.parse(loc2).map(Some(a) -> _)
+        case loc                                 => next.parse(loc).flatMap {
+            case b if loc.query.forall(_._1 != param.key) => Some(None -> b)
+            case _                                        => None
+          }
+      }
+    }
+
+    /** A repeatable named url query parameter, each occurrence of which is converted to and from a typed `List` of
+      * values. The actual conversion is provided by `arg`.
+      */
+    case class Repeated[A, B](params: Param.QueryParamRep[A], next: Path[B]) extends QueryParameter[List[A] -> B] {
+      private val locParams = new Extractor((loc: Location) => Some(loc.takeParams(params.key)))
+      private val parseAll  = new Extractor((xs: List[String]) => Some(xs.flatMap(params.stringable.parse(_))))
+
+      override protected[simplerouter] def encode = { case as -> b =>
+        loc =>
+          val location = loc && ((params.key, as.map(params.stringable.format)))
+          next.encode(b)(location)
+      }
+
+      override def parse: Location => Option[(List[A], B)] = {
+        case locParams(parseAll(as), loc2) => next.parse(loc2).map(as -> _)
+        case _                             => None
+      }
+    }
   }
 }

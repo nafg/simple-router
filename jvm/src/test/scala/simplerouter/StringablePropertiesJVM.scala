@@ -4,7 +4,6 @@ import java.time.Instant
 
 import org.scalacheck.Properties
 
-
 object StringablePropertiesJVM extends Properties("Stringable") {
   import StringableProperties.{arbInstant, testStringable}
 

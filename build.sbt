@@ -1,18 +1,28 @@
-import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
+import _root_.io.github.nafg.scalacoptions._
 
+import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
-ThisBuild / organization := "io.github.nafg.simple-router"
-ThisBuild / crossScalaVersions := Seq("2.12.14", "2.13.6")
-ThisBuild / scalaVersion := (ThisBuild / crossScalaVersions).value.last
-ThisBuild / scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature")
+ThisBuild / organization       := "io.github.nafg.simple-router"
+ThisBuild / crossScalaVersions := Seq("2.13.6", "3.0.1")
+ThisBuild / scalaVersion       := (ThisBuild / crossScalaVersions).value.last
+ThisBuild / scalacOptions ++=
+  ScalacOptions.all(scalaVersion.value)(
+    (opts: options.Common) => opts.deprecation ++ opts.unchecked ++ opts.feature,
+    (opts: options.V2_13) => opts.Xsource("3"),
+    (opts: options.V3) => opts.YkindProjector
+  )
 
 lazy val core =
   crossProject(JVMPlatform, JSPlatform).crossType(CrossType.Full)
     .in(file("."))
     .settings(
       name := "core",
-      libraryDependencies ++= Seq(
-        "org.scalatest" %% "scalatest" % "3.2.9" % Test,
-        "org.scalatestplus" %% "scalacheck-1-15" % "3.2.9.0" % Test
-      )
+      libraryDependencies ++=
+        Seq(
+          "org.scalatest"     %% "scalatest"       % "3.2.9"   % Test,
+          "org.scalatestplus" %% "scalacheck-1-15" % "3.2.9.0" % Test
+        ) ++
+          PartialFunction.condOpt(CrossVersion.partialVersion(scalaVersion.value)) {
+            case Some((2, _)) => compilerPlugin("org.typelevel" % "kind-projector" % "0.13.0" cross CrossVersion.full)
+          }
     )

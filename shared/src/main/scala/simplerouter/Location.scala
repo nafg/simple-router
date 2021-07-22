@@ -2,8 +2,8 @@ package simplerouter
 
 import Compat._
 
-
 case class Location(path: List[String], query: List[(String, String)] = Nil) {
+
   /** Append path components */
   def ++(xs: List[String]) = copy(path = path ++ xs)
 
@@ -23,11 +23,10 @@ case class Location(path: List[String], query: List[(String, String)] = Nil) {
   def &&(x: (String, List[String])) = copy(query = x._2.map(x._1 -> _) ::: query)
 
   /** Get a `Tuple2` containing the named parameter's value, and the rest of this `Location` */
-  def takeParam(name: String): Option[(String, Location)] =
-    query.span(_._1 != name) match {
-      case (_, Nil)                => None
-      case (notIt, (_, v) :: rest) => Some(v -> copy(query = notIt ++ rest))
-    }
+  def takeParam(name: String): Option[(String, Location)] = query.span(_._1 != name) match {
+    case (_, Nil)                => None
+    case (notIt, (_, v) :: rest) => Some(v -> copy(query = notIt ++ rest))
+  }
 
   /** Get a `Tuple2` containing the named parameter's values, and the rest of this `Location` */
   def takeParams(name: String): (List[String], Location) = {
@@ -38,11 +37,8 @@ case class Location(path: List[String], query: List[(String, String)] = Nil) {
   /** Get a URL-encoded `String` representing this `Location` */
   def toUrl = {
     val q =
-      if (query.isEmpty)
-        ""
-      else
-        "?" +
-          query.map { case (k, v) => encodeURIComponent(k) + "=" + encodeURIComponent(v) }.mkString("&")
+      if (query.isEmpty) ""
+      else "?" + query.map { case (k, v) => encodeURIComponent(k) + "=" + encodeURIComponent(v) }.mkString("&")
     path.map(encodeURIComponent).mkString("/", "/", q)
   }
 }

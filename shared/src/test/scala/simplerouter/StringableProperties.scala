@@ -2,16 +2,14 @@ package simplerouter
 
 import java.time.Instant
 
-import org.scalacheck.{Arbitrary, Prop, Properties}
-import Prop._
-
+import org.scalacheck.Prop._
+import org.scalacheck.{Arbitrary, Properties}
 
 object StringableProperties extends Properties("Stringable") {
-  implicit def arbInstant: Arbitrary[Instant] =
-    Arbitrary(Arbitrary.arbitrary[Long].map(Instant.ofEpochMilli))
+  implicit def arbInstant: Arbitrary[Instant] = Arbitrary(Arbitrary.arbitrary[Long].map(Instant.ofEpochMilli))
 
-  def testStringable[A: Arbitrary](s: Stringable[A]) = forAll { a: A =>
-    s.parse(s.format(a)).fold(falsified :| s"couldn't parse '${s.format(a)}'") { p => p ?= a }
+  def testStringable[A: Arbitrary](s: Stringable[A]) = forAll { (a: A) =>
+    s.parse(s.format(a)).fold(falsified :| s"couldn't parse '${s.format(a)}'")(p => p ?= a)
   }
 
   property("string") = testStringable(implicitly[Stringable[String]])
