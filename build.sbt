@@ -3,7 +3,7 @@ import _root_.io.github.nafg.scalacoptions._
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
 ThisBuild / organization       := "io.github.nafg.simple-router"
-ThisBuild / crossScalaVersions := Seq("2.13.6", "3.0.1")
+ThisBuild / crossScalaVersions := Seq("2.13.6", "3.0.2")
 ThisBuild / scalaVersion       := (ThisBuild / crossScalaVersions).value.last
 ThisBuild / scalacOptions ++=
   ScalacOptions.all(scalaVersion.value)(
