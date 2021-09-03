@@ -23,6 +23,6 @@ lazy val core =
           "org.scalatestplus" %% "scalacheck-1-15" % "3.2.9.0" % Test
         ) ++
           PartialFunction.condOpt(CrossVersion.partialVersion(scalaVersion.value)) {
-            case Some((2, _)) => compilerPlugin("org.typelevel" % "kind-projector" % "0.13.1" cross CrossVersion.full)
+            case Some((2, _)) => compilerPlugin("org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full)
           }
     )
