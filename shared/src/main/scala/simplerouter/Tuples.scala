@@ -4,7 +4,7 @@ trait TupleSyntax {
   type ->[+A, +B]  = (A, B)
   type ->:[+A, +B] = (A, B)
 
-  object ->: {
+  object ->:                                     {
     def unapply[A, B](arg: A ->: B) = Some(arg)
   }
 
