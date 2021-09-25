@@ -4,7 +4,7 @@ import simplerouter.Tuples.->:
 object Param {
   case class SegmentParam[A]()(implicit val stringable: Stringable[A])
   object SegmentParam extends ImplicitsForTuple2Path[λ[a => a]]
-      with ImplicitsForToSegment[->:[*, Unit]] {
+      with ImplicitsForToSegment[->:[*, Unit]]                     {
     override protected type From[A] = SegmentParam[A]
     override def toPath[A](from: SegmentParam[A]): Path.Segment.Parameter[A, Unit] =
       Path.Segment.Parameter(from, Path.empty)
@@ -20,7 +20,7 @@ object Param {
 
   case class QueryParamRep[A](key: String)(implicit val stringable: Stringable[A])
   object QueryParamRep extends ImplicitsForTuple2Path[List]
-      with ImplicitsForToQueryParameter[λ[a => (List[a], Unit)]] {
+      with ImplicitsForToQueryParameter[λ[a => (List[a], Unit)]]   {
     override protected type From[A] = QueryParamRep[A]
     override def toPath[A](from: QueryParamRep[A]): Path.QueryParameter.Repeated[A, Unit] =
       Path.QueryParameter.Repeated(from, Path.empty)
