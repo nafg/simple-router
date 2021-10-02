@@ -13,7 +13,7 @@ trait ImplicitsForToPath[In[_]] extends Implicits[In] {
     def >>*[R](handler: In[A] => R)                 = new Route[In[A], R](path, a => Some(handler(a)))
   }
 
-  abstract class PathNHandlerSyntax[A](self: From[A])     {
+  abstract class PathNHandlerSyntax[A](self: From[A]) {
     type F[Z]
     protected def uncurry[Z](f: F[Z]): In[A] => Z
     def >>[Z](handler: F[Z]): Route[In[A], Z] = self >>* (a => uncurry(handler)(a))
@@ -77,19 +77,19 @@ trait PathCompanionImplicits
     }
   }
 
-  implicit class Path0BuildSyntax(self: Path[Unit]) {
+  implicit class Path0BuildSyntax(self: Path[Unit])                                              {
     def construct = self.build(())
   }
-  implicit class Path1BuildSyntax[Z](self: Path[Z ->: Unit]) {
+  implicit class Path1BuildSyntax[Z](self: Path[Z ->: Unit])                                     {
     def construct(a: Z) = self.build(a ->: ())
   }
-  implicit class Path2BuildSyntax[Z, Y](self: Path[Y ->: Z ->: Unit]) {
+  implicit class Path2BuildSyntax[Z, Y](self: Path[Y ->: Z ->: Unit])                            {
     def construct(y: Y, z: Z) = self.build(y ->: z ->: ())
   }
-  implicit class Path3BuildSyntax[Z, Y, X](self: Path[X ->: Y ->: Z ->: Unit]) {
+  implicit class Path3BuildSyntax[Z, Y, X](self: Path[X ->: Y ->: Z ->: Unit])                   {
     def construct(x: X, y: Y, z: Z) = self.build(x ->: y ->: z ->: ())
   }
-  implicit class Path4BuildSyntax[Z, Y, X, W](self: Path[W ->: X ->: Y ->: Z ->: Unit]) {
+  implicit class Path4BuildSyntax[Z, Y, X, W](self: Path[W ->: X ->: Y ->: Z ->: Unit])          {
     def construct(w: W, x: X, y: Y, z: Z) = self.build(w ->: x ->: y ->: z ->: ())
   }
   implicit class Path5BuildSyntax[Z, Y, X, W, V](self: Path[V ->: W ->: X ->: Y ->: Z ->: Unit]) {

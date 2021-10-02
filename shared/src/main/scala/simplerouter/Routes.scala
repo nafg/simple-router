@@ -45,5 +45,5 @@ case class RouteSeq[+A](routes: Seq[Routes[A]]) extends Routes[A] {
   override def run: PartialFunction[Location, A] = routes
     .foldLeft(PartialFunction.empty[Location, A])(_ orElse _.run)
 
-  override def map[B](f: A => B)                 = RouteSeq(routes.map(_.map(f)))
+  override def map[B](f: A => B) = RouteSeq(routes.map(_.map(f)))
 }

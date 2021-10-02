@@ -70,7 +70,7 @@ object Path extends PathCompanionImplicits {
       * provided by `arg`.
       */
     case class Parameter[A, B](param: Param.SegmentParam[A], next: Path[B]) extends Path.Segment[A -> B] {
-      override protected[simplerouter] def encode    = { case a -> b =>
+      override protected[simplerouter] def encode = { case a -> b =>
         l => next.encode(b)(l :+ param.stringable.format(a))
       }
 
@@ -92,7 +92,7 @@ object Path extends PathCompanionImplicits {
     case class Optional[A, B](param: Param.QueryParam[A], next: Path[B]) extends QueryParameter[Option[A] -> B] {
       private val locParam = new Extractor((_: Location).takeParam(param.key))
 
-      override protected[simplerouter] def encode            = { case ao -> b =>
+      override protected[simplerouter] def encode = { case ao -> b =>
         l =>
           val loc2 = ao match {
             case None    => l
@@ -117,7 +117,7 @@ object Path extends PathCompanionImplicits {
       private val locParams = new Extractor((loc: Location) => Some(loc.takeParams(params.key)))
       private val parseAll  = new Extractor((xs: List[String]) => Some(xs.flatMap(params.stringable.parse(_))))
 
-      override protected[simplerouter] def encode          = { case as -> b =>
+      override protected[simplerouter] def encode = { case as -> b =>
         loc =>
           val location = loc && ((params.key, as.map(params.stringable.format)))
           next.encode(b)(location)
