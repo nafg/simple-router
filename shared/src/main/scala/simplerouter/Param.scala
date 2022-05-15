@@ -2,7 +2,7 @@ package simplerouter
 import simplerouter.Tuples.->:
 
 object Param {
-  case class SegmentParam[A]()(implicit val stringable: Stringable[A])
+  case class SegmentParam[A](implicit val stringable: Stringable[A])
   object SegmentParam extends ImplicitsForTuple2Path[λ[a => a]]
       with ImplicitsForToSegment[->:[*, Unit]] {
     override protected type From[A] = SegmentParam[A]
