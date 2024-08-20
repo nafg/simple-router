@@ -108,7 +108,7 @@ object syntax
     extends ImplicitsForToPath[λ[a => Unit]]
     with ImplicitsForToSegment[λ[a => Unit]] with TupleSyntax {
   override protected type From[A] = String
-  override protected def toPath[A](target: String) = Path.Segment.Literal(target, Path.empty)
+  override protected def toPath[A](target: String): Path.Segment.Literal[Unit] = Path.Segment.Literal(target, Path.empty)
 
   implicit class StringHandlerSyntax(self: String) extends Path0HandlerSyntaxBase(self)
 
