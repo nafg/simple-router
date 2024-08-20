@@ -95,7 +95,7 @@ class RoutingTests extends AnyFunSuite with Matchers with Inside {
 
   test("map") {
     val site = r & r
-    val z    = site map ("000" + _)
+    val z    = site.map("000" + _)
 
     val res = z.run(p.build(10 ->: 20 ->: ()))
 
@@ -106,7 +106,7 @@ class RoutingTests extends AnyFunSuite with Matchers with Inside {
 
   test("map with various Path types") {
     val site2 = r & r2
-    val z2    = site2 map ("000" + _)
+    val z2    = site2.map("000" + _)
     val res2  = z2 run Location(List("add", "15", "plus", "20", "please"))
     val res3  = z2 run Location(List("add-all", "10", "15", "20", "25"))
     implicitly[res2.type <:< String]
