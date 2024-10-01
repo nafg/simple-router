@@ -1,4 +1,5 @@
-import _root_.io.github.nafg.scalacoptions._
+import _root_.io.github.nafg.mergify.dsl.*
+import _root_.io.github.nafg.scalacoptions.*
 
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
@@ -11,6 +12,11 @@ ThisBuild / scalacOptions ++=
     (opts: options.V2_13) => opts.Xsource("3"),
     (opts: options.V3) => opts.YkindProjector
   )
+
+mergifyExtraConditions := Seq(
+  (Attr.Author :== "scala-steward") ||
+    (Attr.Author :== "nafg-scala-steward[bot]")
+)
 
 lazy val core =
   crossProject(JVMPlatform, JSPlatform).crossType(CrossType.Full)
