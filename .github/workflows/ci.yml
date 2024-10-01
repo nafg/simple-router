@@ -23,7 +23,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.14, 3.5.0]
+        scala: [2.13.x, 3.5.x]
         java: [zulu@8]
     runs-on: ${{ matrix.os }}
     steps:
@@ -85,22 +85,22 @@ jobs:
       - name: Setup sbt
         uses: sbt/setup-sbt@v1
 
-      - name: Download target directories (2.13.14)
+      - name: Download target directories (2.13.x)
         uses: actions/download-artifact@v4
         with:
-          name: target-${{ matrix.os }}-2.13.14-${{ matrix.java }}
+          name: target-${{ matrix.os }}-2.13.x-${{ matrix.java }}
 
-      - name: Inflate target directories (2.13.14)
+      - name: Inflate target directories (2.13.x)
         run: |
           tar xf targets.tar
           rm targets.tar
 
-      - name: Download target directories (3.5.0)
+      - name: Download target directories (3.5.x)
         uses: actions/download-artifact@v4
         with:
-          name: target-${{ matrix.os }}-3.5.0-${{ matrix.java }}
+          name: target-${{ matrix.os }}-3.5.x-${{ matrix.java }}
 
-      - name: Inflate target directories (3.5.0)
+      - name: Inflate target directories (3.5.x)
         run: |
           tar xf targets.tar
           rm targets.tar

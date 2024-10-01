@@ -1,12 +1,13 @@
 val repoPath = "nafg/simple-router"
+
 inThisBuild(List(
-  homepage                := Some(url(s"https://github.com/$repoPath")),
-  licenses                := List("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0")),
-  developers              :=
+  homepage                    := Some(url(s"https://github.com/$repoPath")),
+  licenses                    := List("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0")),
+  developers                  :=
     List(
       Developer("nafg", "Naftoli Gugenheim", "98384+nafg@users.noreply.github.com", url("https://github.com/nafg"))
     ),
-  scmInfo                 :=
+  scmInfo                     :=
     Some(
       ScmInfo(
         browseUrl = url(s"https://github.com/$repoPath"),
@@ -14,8 +15,9 @@ inThisBuild(List(
         devConnection = Some(s"scm:git:git@github.com:$repoPath.git")
       )
     ),
-  dynverGitDescribeOutput := dynverGitDescribeOutput.value.map(_.copy(dirtySuffix = sbtdynver.GitDirtySuffix(""))),
-  dynverSonatypeSnapshots := true,
+  dynverGitDescribeOutput     := dynverGitDescribeOutput.value.map(_.copy(dirtySuffix = sbtdynver.GitDirtySuffix(""))),
+  dynverSonatypeSnapshots     := true,
+  githubWorkflowScalaVersions := githubWorkflowScalaVersions.value.map(_.replaceFirst("\\d+$", "x")),
   githubWorkflowPublishTargetBranches := Seq(RefPredicate.StartsWith(Ref.Tag("v"))),
   githubWorkflowTargetTags            := Seq("v*"),
   githubWorkflowPublish               :=
