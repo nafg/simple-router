@@ -8,8 +8,8 @@ ThisBuild / crossScalaVersions := Seq("2.13.18", "3.3.7")
 ThisBuild / scalaVersion       := (ThisBuild / crossScalaVersions).value.last
 ThisBuild / scalacOptions ++=
   ScalacOptions.all(scalaVersion.value)(
-    (opts: options.Common) => opts.deprecation ++ opts.unchecked ++ opts.feature,
-    (opts: options.V2_13) => opts.Xsource("3"),
+    (opts: options.Common) => opts.deprecation ++ opts.feature,
+    (opts: options.V2_13) => opts.Xsource("3") ++ opts.unchecked,
     (opts: options.V3) => opts.YkindProjector
   )
 
