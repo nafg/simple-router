@@ -26,7 +26,7 @@ lazy val core =
       libraryDependencies ++=
         Seq(
           "org.scalatest"     %% "scalatest"       % "3.2.20"   % Test,
-          "org.scalatestplus" %% "scalacheck-1-16" % "3.2.14.0" % Test
+          "org.scalatestplus" %% "scalacheck-1-17" % "3.2.18.0" % Test
         ) ++
           PartialFunction.condOpt(CrossVersion.partialVersion(scalaVersion.value)) {
             case Some((2, _)) => compilerPlugin("org.typelevel" % "kind-projector" % "0.13.4" cross CrossVersion.full)
