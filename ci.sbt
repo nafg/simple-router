@@ -17,6 +17,7 @@ inThisBuild(List(
     ),
   dynverGitDescribeOutput     := dynverGitDescribeOutput.value.map(_.copy(dirtySuffix = sbtdynver.GitDirtySuffix(""))),
   dynverSonatypeSnapshots     := true,
+  githubWorkflowJavaVersions  := Seq(JavaSpec.zulu("17")),
   githubWorkflowScalaVersions := githubWorkflowScalaVersions.value.map(_.replaceFirst("\\d+$", "x")),
   githubWorkflowPublishTargetBranches := Seq(RefPredicate.StartsWith(Ref.Tag("v"))),
   githubWorkflowTargetTags            := Seq("v*"),
