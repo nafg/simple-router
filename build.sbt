@@ -32,3 +32,6 @@ lazy val core =
             case Some((2, _)) => compilerPlugin("org.typelevel" % "kind-projector" % "0.13.4" cross CrossVersion.full)
           }
     )
+    .jsSettings(
+      libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % "2.8.0"
+    )
