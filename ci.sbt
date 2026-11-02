@@ -18,6 +18,8 @@ inThisBuild(List(
   dynverGitDescribeOutput     := dynverGitDescribeOutput.value.map(_.copy(dirtySuffix = sbtdynver.GitDirtySuffix(""))),
   dynverSonatypeSnapshots     := true,
   githubWorkflowJavaVersions  := Seq(JavaSpec.zulu("17")),
+  // In sbt 2, test only runs tests it considers affected by changes, and it can skip some even on a clean build
+  githubWorkflowBuild         := Seq(WorkflowStep.Sbt(List("testFull"), name = Some("Build project"))),
   githubWorkflowScalaVersions := githubWorkflowScalaVersions.value.map(_.replaceFirst("\\d+$", "x")),
   githubWorkflowPublishTargetBranches := Seq(RefPredicate.StartsWith(Ref.Tag("v"))),
   githubWorkflowTargetTags            := Seq("v*"),
