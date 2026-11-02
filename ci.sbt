@@ -1,16 +1,16 @@
 val repoPath = "nafg/simple-router"
 
 inThisBuild(List(
-  homepage                    := Some(url(s"https://github.com/$repoPath")),
-  licenses                    := List("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0")),
+  homepage                    := Some(uri(s"https://github.com/$repoPath")),
+  licenses                    := List("Apache-2.0" -> uri("https://www.apache.org/licenses/LICENSE-2.0")),
   developers                  :=
     List(
-      Developer("nafg", "Naftoli Gugenheim", "98384+nafg@users.noreply.github.com", url("https://github.com/nafg"))
+      Developer("nafg", "Naftoli Gugenheim", "98384+nafg@users.noreply.github.com", uri("https://github.com/nafg"))
     ),
   scmInfo                     :=
     Some(
       ScmInfo(
-        browseUrl = url(s"https://github.com/$repoPath"),
+        browseUrl = uri(s"https://github.com/$repoPath"),
         connection = s"scm:git:git://github.com/$repoPath.git",
         devConnection = Some(s"scm:git:git@github.com:$repoPath.git")
       )
