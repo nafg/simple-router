@@ -22,9 +22,10 @@ sealed trait Path[A] {
   def parse: Location => Option[A]
 
   /** Given a route value, returns a `PartialFunction` that parses a [[Location]] and passes the parameters to the route
-    * value, if applicable
+    * value, if applicable. The `Location` is [[Location.normalized normalized]] first, so a route matches the URLs it
+    * builds whichever form of the path the caller has.
     */
-  final def run[R](handler: A => Option[R]): Location => Option[R] = parse(_).flatMap(handler)
+  final def run[R](handler: A => Option[R]): Location => Option[R] = loc => parse(loc.normalized).flatMap(handler)
 }
 
 object Path extends PathCompanionImplicits {
