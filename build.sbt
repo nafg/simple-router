@@ -6,7 +6,8 @@ import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 ThisBuild / organization       := "io.github.nafg.simple-router"
 ThisBuild / crossScalaVersions := Seq("2.13.18", "3.9.0")
 ThisBuild / scalaVersion       := (ThisBuild / crossScalaVersions).value.last
-ThisBuild / scalacOptions ++=
+// A bare setting, which sbt 2 applies to every project, so that each one evaluates it against its own Scala version
+scalacOptions ++=
   ScalacOptions.all(scalaVersion.value)(
     (opts: options.Common) => opts.deprecation ++ opts.feature,
     (opts: options.V2_13) => opts.Xsource("3") ++ opts.unchecked,
@@ -25,16 +26,18 @@ lazy val core =
       name := "core",
       libraryDependencies ++=
         Seq(
-          "org.scalatest"     %%% "scalatest"       % "3.2.20"   % Test,
-          "org.scalatestplus" %%% "scalacheck-1-19" % "3.2.20.0" % Test
+          "org.scalatest"     %% "scalatest"       % "3.2.20"   % Test,
+          "org.scalatestplus" %% "scalacheck-1-19" % "3.2.20.0" % Test
         ) ++
           PartialFunction.condOpt(CrossVersion.partialVersion(scalaVersion.value)) {
-            case Some((2, _)) => compilerPlugin("org.typelevel" % "kind-projector" % "0.13.4" cross CrossVersion.full)
+            case Some((2, _)) => compilerPlugin(
+                ("org.typelevel" % "kind-projector" % "0.13.4" cross CrossVersion.full).platform(Platform.jvm)
+              )
           }
     )
     .jsSettings(
       libraryDependencies ++= Seq(
-        "io.github.cquiroz" %%% "scala-java-time" % "2.8.0" % Test,
-        "org.scala-js"      %%% "scalajs-dom"     % "2.8.1" % Test
+        "io.github.cquiroz" %% "scala-java-time" % "2.8.0" % Test,
+        "org.scala-js"      %% "scalajs-dom"     % "2.8.1" % Test
       )
     )
