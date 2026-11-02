@@ -11,7 +11,7 @@ scalacOptions ++=
   ScalacOptions.all(scalaVersion.value)(
     (opts: options.Common) => opts.deprecation ++ opts.feature,
     (opts: options.V2_13) => opts.Xsource("3") ++ opts.unchecked,
-    (opts: options.V3) => opts.YkindProjector
+    (opts: options.V3_8) => opts.YkindProjector("")
   )
 
 mergifyExtraConditions := Seq(
