@@ -8,4 +8,8 @@ class LocationTests extends AnyFunSuite with Matchers {
     val loc = Location(List("p@th", "to&", "re/source"), List(("f#eld", "v@lue"), ("ke%", "value?")))
     loc.toUrl should equal("/p%40th/to%26/re%2Fsource?f%23eld=v%40lue&ke%25=value%3F")
   }
+
+  test("toUrl encodes a space in a path segment as %20") {
+    Location(List("a b")).toUrl should equal("/a%20b")
+  }
 }

@@ -1,6 +1,6 @@
 package simplerouter
 
-import Compat._
+import java.nio.charset.StandardCharsets
 
 case class Location(path: List[String], query: List[(String, String)] = Nil) {
 
@@ -38,7 +38,29 @@ case class Location(path: List[String], query: List[(String, String)] = Nil) {
   def toUrl = {
     val q =
       if (query.isEmpty) ""
-      else "?" + query.map { case (k, v) => encodeURIComponent(k) + "=" + encodeURIComponent(v) }.mkString("&")
-    path.map(encodeURIComponent).mkString("/", "/", q)
+      else
+        "?" + query.map { case (k, v) => Location.encodeComponent(k) + "=" + Location.encodeComponent(v) }.mkString("&")
+    path.map(Location.encodeComponent).mkString("/", "/", q)
   }
+}
+
+object Location {
+  /** Percent-encodes `s` as UTF-8 for use as one path segment, query key or query value, leaving only the characters
+    * JavaScript's `encodeURIComponent` leaves: ASCII letters and digits and `-_.!~*'()`. The result is the same on
+    * every platform.
+    */
+  def encodeComponent(s: String): String = {
+    val sb = new java.lang.StringBuilder
+    s.getBytes(StandardCharsets.UTF_8).foreach { b =>
+      val c = (b & 0xff).toChar
+      if (isLeftAsIs(c)) sb.append(c)
+      else sb.append('%').append(HexDigits.charAt((b >> 4) & 0xf)).append(HexDigits.charAt(b & 0xf))
+    }
+    sb.toString
+  }
+
+  private val HexDigits = "0123456789ABCDEF"
+
+  private def isLeftAsIs(c: Char) =
+    (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || "-_.!~*'()".indexOf(c.toInt) >= 0
 }
