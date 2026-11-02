@@ -12,4 +12,36 @@ class LocationTests extends AnyFunSuite with Matchers {
   test("toUrl encodes a space in a path segment as %20") {
     Location(List("a b")).toUrl should equal("/a%20b")
   }
+
+  test("normalized resolves . and .. segments") {
+    Location(List("a", ".", "b")).normalized.path should equal(List("a", "b"))
+    Location(List("a", "..", "b")).normalized.path should equal(List("b"))
+    Location(List("..", "a")).normalized.path should equal(List("a"))
+  }
+
+  test("normalized leaves a trailing slash for a trailing . or ..") {
+    Location(List("a", "b", ".")).normalized.path should equal(List("a", "b", ""))
+    Location(List("a", "b", "..")).normalized.path should equal(List("a", ""))
+  }
+
+  test("normalized drops leading empty segments, so the root is Nil") {
+    Location(List("")).normalized.path should equal(Nil)
+    Location(List("", "", "x")).normalized.path should equal(List("x"))
+    Location(List("a", "..")).normalized.path should equal(Nil)
+  }
+
+  test("normalized keeps empty segments after the first") {
+    Location(List("a", "", "b")).normalized.path should equal(List("a", "", "b"))
+    Location(List("a", "")).normalized.path should equal(List("a", ""))
+  }
+
+  test("normalized returns the same instance when there is nothing to resolve") {
+    val loc = Location(List("a", "", "b"))
+    loc.normalized should be theSameInstanceAs loc
+  }
+
+  test("toUrl renders the normalized path, so it never starts with //") {
+    Location(List("", "evil.example")).toUrl should equal("/evil.example")
+    Location(List("a", "..", "b")).toUrl should equal("/b")
+  }
 }
