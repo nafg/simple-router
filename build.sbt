@@ -25,10 +25,13 @@ lazy val core =
       name := "core",
       libraryDependencies ++=
         Seq(
-          "org.scalatest"     %% "scalatest"       % "3.2.20"   % Test,
-          "org.scalatestplus" %% "scalacheck-1-19" % "3.2.20.0" % Test
+          "org.scalatest"     %%% "scalatest"       % "3.2.20"   % Test,
+          "org.scalatestplus" %%% "scalacheck-1-19" % "3.2.20.0" % Test
         ) ++
           PartialFunction.condOpt(CrossVersion.partialVersion(scalaVersion.value)) {
             case Some((2, _)) => compilerPlugin("org.typelevel" % "kind-projector" % "0.13.4" cross CrossVersion.full)
           }
+    )
+    .jsSettings(
+      libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % "2.8.0" % Test
     )
