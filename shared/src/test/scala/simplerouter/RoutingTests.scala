@@ -59,6 +59,13 @@ class RoutingTests extends AnyFunSuite with Matchers with Inside {
     )) should equal(false)
   }
 
+  test("Running urls matches the normalized location") {
+    val root = Path.empty >> "root"
+    root.run(Location("" :: Nil)) should equal("root")
+    r.run(Location("x" :: ".." :: "add" :: "10" :: "plus" :: "." :: "20" :: "please" :: Nil)) should equal(30)
+    r.run(Location("" :: "add" :: "10" :: "plus" :: "20" :: "please" :: Nil)) should equal(30)
+  }
+
   test("Sites") {
     val s = r & r2 & r3
 

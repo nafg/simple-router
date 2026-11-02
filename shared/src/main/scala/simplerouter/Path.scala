@@ -1,5 +1,7 @@
 package simplerouter
 
+import scala.annotation.implicitNotFound
+
 import simplerouter.Tuples.{->, Any_->:}
 
 private class Extractor[-A, +B](f: A => Option[B]) {
@@ -22,14 +24,26 @@ sealed trait Path[A] {
   def parse: Location => Option[A]
 
   /** Given a route value, returns a `PartialFunction` that parses a [[Location]] and passes the parameters to the route
-    * value, if applicable
+    * value, if applicable. The `Location` is [[Location.normalized normalized]] first, so a route matches the URLs it
+    * builds whichever form of the path the caller has.
     */
-  final def run[R](handler: A => Option[R]): Location => Option[R] = parse(_).flatMap(handler)
+  final def run[R](handler: A => Option[R]): Location => Option[R] = loc => parse(loc.normalized).flatMap(handler)
 }
 
 object Path extends PathCompanionImplicits {
-  val empty                  = Segment.Empty
-  def apply(literal: String) = Segment.Literal(literal, empty)
+  val empty = Segment.Empty
+
+  /** A path consisting of the single segment `literal`, which must not be empty: the root is [[empty]] */
+  def apply(literal: String): Segment.Literal[Unit] = {
+    require(literal.nonEmpty, "Path(\"\") is not a path segment: use Path.empty for the root")
+    Segment.Literal(literal, empty)
+  }
+
+  def apply(literal: "")(implicit noEmptyLiteral: NoEmptyLiteral): Nothing = ???
+
+  /** Has no instances, so that writing an empty path literal fails to compile with this message */
+  @implicitNotFound("\"\" is not a path segment: use Path.empty for the root")
+  sealed abstract class NoEmptyLiteral
 
   sealed trait Segment[A] extends Path[A]
   object Segment {

@@ -1,7 +1,8 @@
 package simplerouter
 
-import Compat._
+import java.nio.charset.StandardCharsets
 
+/** A URL path and query string, held as decoded path segments and query parameters. */
 case class Location(path: List[String], query: List[(String, String)] = Nil) {
 
   /** Append path components */
@@ -34,11 +35,52 @@ case class Location(path: List[String], query: List[(String, String)] = Nil) {
     (it.map(_._2), copy(query = notIt))
   }
 
-  /** Get a URL-encoded `String` representing this `Location` */
+  /** This `Location` with its path resolved the way a browser resolves it before sending a request: `.` and `..`
+    * segments are resolved (`..` above the root stays at the root), and leading empty segments are dropped, so the
+    * root is `Nil`. Two `Location`s refer to the same resource when their normalized forms are equal.
+    */
+  def normalized: Location =
+    if (path.headOption.contains("") || path.exists(s => s == "." || s == "..")) copy(path = Location.normalize(path))
+    else this
+
+  /** Get a URL-encoded `String` representing this `Location`'s [[normalized]] path and its query */
   def toUrl = {
     val q =
       if (query.isEmpty) ""
-      else "?" + query.map { case (k, v) => encodeURIComponent(k) + "=" + encodeURIComponent(v) }.mkString("&")
-    path.map(encodeURIComponent).mkString("/", "/", q)
+      else
+        "?" + query.map { case (k, v) => Location.encodeComponent(k) + "=" + Location.encodeComponent(v) }.mkString("&")
+    normalized.path.map(Location.encodeComponent).mkString("/", "/", q)
   }
+}
+
+object Location {
+  private def normalize(path: List[String]): List[String] = {
+    val lastIndex = path.length - 1
+    // A trailing `.` or `..` leaves a trailing slash, as `/a/b/..` resolves to `/a/`
+    val resolved  = path.zipWithIndex.foldLeft(Vector.empty[String]) {
+      case (acc, (".", i))  => if (i == lastIndex) acc :+ "" else acc
+      case (acc, ("..", i)) => if (i == lastIndex) acc.dropRight(1) :+ "" else acc.dropRight(1)
+      case (acc, (s, _))    => acc :+ s
+    }
+    resolved.dropWhile(_.isEmpty).toList
+  }
+
+  /** Percent-encodes `s` as UTF-8 for use as one path segment, query key or query value, leaving only the characters
+    * JavaScript's `encodeURIComponent` leaves: ASCII letters and digits and `-_.!~*'()`. The result is the same on
+    * every platform.
+    */
+  def encodeComponent(s: String): String = {
+    val sb = new java.lang.StringBuilder
+    s.getBytes(StandardCharsets.UTF_8).foreach { b =>
+      val c = (b & 0xff).toChar
+      if (isLeftAsIs(c)) sb.append(c)
+      else sb.append('%').append(HexDigits.charAt((b >> 4) & 0xf)).append(HexDigits.charAt(b & 0xf))
+    }
+    sb.toString
+  }
+
+  private val HexDigits = "0123456789ABCDEF"
+
+  private def isLeftAsIs(c: Char) =
+    (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || "-_.!~*'()".indexOf(c.toInt) >= 0
 }
