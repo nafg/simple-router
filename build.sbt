@@ -10,8 +10,9 @@ ThisBuild / scalaVersion       := (ThisBuild / crossScalaVersions).value.last
 scalacOptions ++=
   ScalacOptions.all(scalaVersion.value)(
     (opts: options.Common) => opts.deprecation ++ opts.feature,
-    (opts: options.V2_13) => opts.Xsource("3") ++ opts.unchecked,
-    (opts: options.V3_8) => opts.XkindProjector("")
+    (opts: options.V2_13) =>
+      opts.Xsource("3") ++ opts.unchecked ++ List("-P:kind-projector:underscore-placeholders"),
+    (opts: options.V3_8) => opts.XkindProjector("underscores")
   )
 
 mergifyExtraConditions := Seq(
