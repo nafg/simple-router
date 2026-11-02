@@ -33,5 +33,8 @@ lazy val core =
           }
     )
     .jsSettings(
-      libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % "2.8.0" % Test
+      libraryDependencies ++= Seq(
+        "io.github.cquiroz" %%% "scala-java-time" % "2.8.0" % Test,
+        "org.scala-js"      %%% "scalajs-dom"     % "2.8.1" % Test
+      )
     )
