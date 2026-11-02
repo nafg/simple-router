@@ -26,14 +26,22 @@ trait ImplicitsForToPath[In[_]] extends Implicits[In] {
 
 trait ImplicitsForToSegment[In[_]]        extends Implicits[In] {
   implicit class PathSegmentSyntax[A](self: From[A]) {
-    def :/:(s: String): Path.Segment.Literal[In[A]]                          = Path.Segment.Literal(s, toPath(self))
+    def :/:(s: String): Path.Segment.Literal[In[A]] = {
+      require(s.nonEmpty, "\"\" :/: … is not a path segment: use Path.empty for the root")
+      Path.Segment.Literal(s, toPath(self))
+    }
+    def :/:(s: "")(implicit noEmptyLiteral: Path.NoEmptyLiteral): Nothing   = ???
     def :/:[B](arg: Param.SegmentParam[B]): Path.Segment.Parameter[B, In[A]] =
       Path.Segment.Parameter(arg, toPath(self))
   }
 }
 trait ImplicitsForToQueryParameter[In[_]] extends Implicits[In] {
   implicit class PathQueryParameterSyntax[A](self: From[A]) {
-    def :&:(s: String): Path.Segment.Literal[In[A]]                            = Path.Segment.Literal(s, toPath(self))
+    def :&:(s: String): Path.Segment.Literal[In[A]] = {
+      require(s.nonEmpty, "\"\" :&: … is not a path segment: use Path.empty for the root")
+      Path.Segment.Literal(s, toPath(self))
+    }
+    def :&:(s: "")(implicit noEmptyLiteral: Path.NoEmptyLiteral): Nothing = ???
     def :&:[B](arg: Param.SegmentParam[B]): Path.Segment.Parameter[B, In[A]]   =
       Path.Segment.Parameter(arg, toPath(self))
     def :&:[B](p: Param.QueryParam[B]): Path.QueryParameter.Optional[B, In[A]] =

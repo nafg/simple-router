@@ -44,4 +44,32 @@ class LocationTests extends AnyFunSuite with Matchers {
     Location(List("", "evil.example")).toUrl should equal("/evil.example")
     Location(List("a", "..", "b")).toUrl should equal("/b")
   }
+
+  test("Path(\"\") does not compile") {
+    assertCompiles("""Path("a")""")
+    assertDoesNotCompile("""Path("")""")
+  }
+
+  test("\"\" :/: … does not compile") {
+    assertCompiles("""import simplerouter.syntax._; "x" :/: "a"""")
+    assertDoesNotCompile("""import simplerouter.syntax._; "" :/: "a"""")
+  }
+
+  test("\"\" :&: … does not compile") {
+    assertCompiles("""import simplerouter.syntax._; "x" :&: Param[Int]("a")""")
+    assertDoesNotCompile("""import simplerouter.syntax._; "" :&: Param[Int]("a")""")
+  }
+
+  test("Path, :/: and :&: reject an empty literal that isn't a compile-time constant") {
+    val empty = ""
+    an[IllegalArgumentException] should be thrownBy Path(empty)
+    an[IllegalArgumentException] should be thrownBy {
+      import simplerouter.syntax._
+      empty :/: "a"
+    }
+    an[IllegalArgumentException] should be thrownBy {
+      import simplerouter.syntax._
+      empty :&: Param[Int]("a")
+    }
+  }
 }
