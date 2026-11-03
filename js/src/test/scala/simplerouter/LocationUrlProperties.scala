@@ -1,6 +1,8 @@
 package simplerouter
 
 import scala.scalajs.js
+import scala.scalajs.js.URIUtils.decodeURIComponent
+import scala.util.Try
 import scala.util.matching.Regex
 
 import org.scalacheck.Prop.*
@@ -71,5 +73,27 @@ object LocationUrlProperties extends Properties("Location") {
     val nonAscii = "[^\\x00-\\x7f]+".r
     val escaped  = nonAscii.replaceAllIn(text, m => Regex.quoteReplacement(Location.encodeComponent(m.matched)))
     Location.parseQuery(text) ?= params(new URLSearchParams(escaped))
+  }
+
+  /** `decodeURIComponent` throws for exactly the text the strict parsers reject: a `%` that isn't followed by two hex
+    * digits, or escapes whose bytes aren't valid UTF-8. A multi-byte sequence can't span a delimiter, which is a
+    * literal character, so decoding the text whole agrees with decoding each of its parts. `rawText` has no unpaired
+    * surrogates.
+    */
+  private def wellFormed(text: String) = Try(decodeURIComponent(text)).isSuccess
+
+  property("parsePathAndQueryStrict is parsePathAndQuery when the text before # is well formed, else None") =
+    forAll(rawText) { text =>
+      val ok = wellFormed(text.takeWhile(_ != '#'))
+      classify(ok, "well formed", "malformed") {
+        Location.parsePathAndQueryStrict(text) ?= Option.when(ok)(Location.parsePathAndQuery(text))
+      }
+    }
+
+  property("parseQueryStrict is parseQuery when the text is well formed, else None") = forAll(rawText) { text =>
+    val ok = wellFormed(text)
+    classify(ok, "well formed", "malformed") {
+      Location.parseQueryStrict(text) ?= Option.when(ok)(Location.parseQuery(text))
+    }
   }
 }

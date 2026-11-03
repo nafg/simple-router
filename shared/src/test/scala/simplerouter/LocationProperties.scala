@@ -11,4 +11,8 @@ object LocationProperties extends Properties("Location") {
   property("parsePathAndQuery parses toUrl back to the normalized Location") = forAll(LocationGen.location) { loc =>
     Location.parsePathAndQuery(loc.toUrl) ?= loc.normalized
   }
+
+  property("parsePathAndQueryStrict accepts toUrl") = forAll(LocationGen.location) { loc =>
+    Location.parsePathAndQueryStrict(loc.toUrl) ?= Some(loc.normalized)
+  }
 }

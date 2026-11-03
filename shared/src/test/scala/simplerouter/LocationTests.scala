@@ -85,6 +85,27 @@ class LocationTests extends AnyFunSuite with Matchers {
     Location.parsePathAndQuery("/\ud800/\udc00%41") should equal(Location(List("\ufffd", "\ufffdA")))
   }
 
+  test("parsePathAndQueryStrict gives what parsePathAndQuery gives for a well-formed path and query") {
+    for (raw <- List("/a/b%20c?k=v%26w#f", "/%EF%BF%BD", "/a?k=v#%zz", "/a+b?a+b=%E4%B8%AD", ""))
+      Location.parsePathAndQueryStrict(raw) should equal(Some(Location.parsePathAndQuery(raw)))
+    Location.parsePathAndQueryStrict("/%EF%BF%BD") should equal(Some(Location(List("\ufffd"))))
+  }
+
+  test("parsePathAndQueryStrict rejects malformed escapes, invalid UTF-8 and unpaired surrogates") {
+    for (raw <- List("/%zz", "/%", "/a?k=%4", "/%FF", "/a?k=%C3", "/%C3/%A9", "/%ED%A0%80", "/\ud800", "/a?\udc00"))
+      withClue(raw)(Location.parsePathAndQueryStrict(raw) should equal(None))
+  }
+
+  test("parseQueryStrict gives what parseQuery gives for a well-formed query") {
+    for (raw <- List("a=1;b=2&c", "?a=%EF%BF%BD", "a+b=c+d&&=e", ""))
+      Location.parseQueryStrict(raw) should equal(Some(Location.parseQuery(raw)))
+  }
+
+  test("parseQueryStrict rejects malformed escapes, invalid UTF-8 and unpaired surrogates") {
+    for (raw <- List("a=%", "a=%zz", "%4=b", "a=%E4%B8", "a=%C0%80", "a=\udc00"))
+      withClue(raw)(Location.parseQueryStrict(raw) should equal(None))
+  }
+
   test("Path(\"\") does not compile") {
     assertCompiles("""Path("a")""")
     assertDoesNotCompile("""Path("")""")

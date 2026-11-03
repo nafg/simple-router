@@ -71,10 +71,12 @@ object Location {
     * [[Location.normalized normalized]], so `parsePathAndQuery(loc.toUrl) == loc.normalized` for every `loc` whose
     * strings have no unpaired surrogates.
     */
-  def parsePathAndQuery(raw: String): Location = {
-    val (path, query) = raw.takeWhile(_ != '#').span(_ != '?')
-    Location(path.split("/", -1).toList.map(percentDecode(_, plusIsSpace = false)), parseQuery(query)).normalized
-  }
+  def parsePathAndQuery(raw: String): Location = decodePathAndQuery(raw).value
+
+  /** [[parsePathAndQuery]] of `raw`, or `None` if the part of `raw` before any `#` has a `%` that isn't followed by two
+    * hex digits, an unpaired surrogate, or a path segment, key or value whose decoded bytes aren't valid UTF-8
+    */
+  def parsePathAndQueryStrict(raw: String): Option[Location] = decodePathAndQuery(raw).toOption
 
   /** The parameters of the query string `raw`, parsed as the WHATWG URL standard's `URLSearchParams` parses it. A
     * leading `?` is dropped. Parameters are separated by `&`, and not by `;`, which can occur in a key or value. Empty
@@ -84,67 +86,107 @@ object Location {
     * sequence becomes one U+FFFD, as the WHATWG Encoding standard specifies. An unpaired surrogate in `raw` becomes
     * U+FFFD too.
     */
-  def parseQuery(raw: String): List[(String, String)] =
-    raw.stripPrefix("?").split("&", -1).toList.filter(_.nonEmpty).map { param =>
-      val (key, value) = param.span(_ != '=')
-      percentDecode(key, plusIsSpace = true) -> percentDecode(value.drop(1), plusIsSpace = true)
-    }
+  def parseQuery(raw: String): List[(String, String)] = decodeQuery(raw).value
 
-  private def percentDecode(raw: String, plusIsSpace: Boolean): String = {
-    val s = replaceUnpairedSurrogates(raw)
-    if (s.indexOf('%') < 0 && !(plusIsSpace && s.indexOf('+') >= 0)) s
+  /** [[parseQuery]] of `raw`, or `None` if `raw` has a `%` that isn't followed by two hex digits, an unpaired
+    * surrogate, or a key or value whose decoded bytes aren't valid UTF-8
+    */
+  def parseQueryStrict(raw: String): Option[List[(String, String)]] = decodeQuery(raw).toOption
+
+  /** A decoded value, and whether the text it was decoded from was well formed. Malformed text is decoded too, with
+    * what's malformed in it kept or replaced by U+FFFD.
+    */
+  private final case class Decoded[+A](value: A, wellFormed: Boolean) {
+    def map[B](f: A => B): Decoded[B]             = Decoded(f(value), wellFormed)
+    def zip[B](that: Decoded[B]): Decoded[(A, B)] = Decoded((value, that.value), wellFormed && that.wellFormed)
+    def toOption: Option[A]                       = Option.when(wellFormed)(value)
+  }
+
+  private object Decoded {
+    def sequence[A](xs: List[Decoded[A]]): Decoded[List[A]] = Decoded(xs.map(_.value), xs.forall(_.wellFormed))
+  }
+
+  private def decodePathAndQuery(raw: String): Decoded[Location] = {
+    val (path, query) = raw.takeWhile(_ != '#').span(_ != '?')
+    Decoded.sequence(path.split("/", -1).toList.map(percentDecode(_, plusIsSpace = false)))
+      .zip(decodeQuery(query))
+      .map { case (segments, params) => Location(segments, params).normalized }
+  }
+
+  private def decodeQuery(raw: String): Decoded[List[(String, String)]] =
+    Decoded.sequence(raw.stripPrefix("?").split("&", -1).toList.filter(_.nonEmpty).map { param =>
+      val (key, value) = param.span(_ != '=')
+      percentDecode(key, plusIsSpace = true).zip(percentDecode(value.drop(1), plusIsSpace = true))
+    })
+
+  private def percentDecode(raw: String, plusIsSpace: Boolean): Decoded[String] = {
+    val scalarValues = replaceUnpairedSurrogates(raw)
+    val s            = scalarValues.value
+    if (s.indexOf('%') < 0 && !(plusIsSpace && s.indexOf('+') >= 0)) scalarValues
     else {
       // UTF-8 encodes non-ASCII characters with non-ASCII bytes only, so the ASCII `%`, hex digits and `+` can be
       // found among the bytes
-      val bytes = s.getBytes(StandardCharsets.UTF_8)
-      val out   = new java.io.ByteArrayOutputStream(bytes.length)
-      var i     = 0
+      val bytes             = s.getBytes(StandardCharsets.UTF_8)
+      val out               = new java.io.ByteArrayOutputStream(bytes.length)
+      var escapesWellFormed = true
+      var i                 = 0
       while (i < bytes.length) {
         val b = bytes(i)
         if (b == '%' && i + 2 < bytes.length && hexValue(bytes(i + 1)) >= 0 && hexValue(bytes(i + 2)) >= 0) {
           out.write(hexValue(bytes(i + 1)) * 16 + hexValue(bytes(i + 2)))
           i += 3
         } else {
+          if (b == '%') escapesWellFormed = false
           out.write(if (plusIsSpace && b == '+') ' '.toInt else b.toInt)
           i += 1
         }
       }
-      decodeUtf8(out.toByteArray)
+      val utf8              = decodeUtf8(out.toByteArray)
+      Decoded(utf8.value, scalarValues.wellFormed && escapesWellFormed && utf8.wellFormed)
     }
   }
 
   /** `s` with each unpaired surrogate replaced by U+FFFD, as the WHATWG URL standard converts a string to Unicode
-    * scalar values
+    * scalar values; it is well formed if it had none
     */
-  private def replaceUnpairedSurrogates(s: String): String =
-    if (!s.exists(Character.isSurrogate)) s
+  private def replaceUnpairedSurrogates(s: String): Decoded[String] =
+    if (!s.exists(Character.isSurrogate)) Decoded(s, wellFormed = true)
     else {
-      val sb = new java.lang.StringBuilder(s.length)
-      var i  = 0
+      val sb       = new java.lang.StringBuilder(s.length)
+      var replaced = false
+      var i        = 0
       while (i < s.length) {
         val c = s.charAt(i)
         if (Character.isHighSurrogate(c) && i + 1 < s.length && Character.isLowSurrogate(s.charAt(i + 1))) {
           sb.append(c).append(s.charAt(i + 1))
           i += 2
         } else {
-          sb.append(if (Character.isSurrogate(c)) '\ufffd' else c)
+          if (Character.isSurrogate(c)) {
+            sb.append('\ufffd')
+            replaced = true
+          } else sb.append(c)
           i += 1
         }
       }
-      sb.toString
+      Decoded(sb.toString, wellFormed = !replaced)
     }
 
   /** Decodes `bytes` with the WHATWG Encoding standard's UTF-8 decoder, which replaces each maximal invalid subsequence
-    * with U+FFFD. Platforms' own decoders don't all do the same.
+    * with U+FFFD; the result is well formed if `bytes` is valid UTF-8. Platforms' own decoders don't all do the same.
     */
-  private def decodeUtf8(bytes: Array[Byte]): String = {
+  private def decodeUtf8(bytes: Array[Byte]): Decoded[String] = {
     val sb          = new java.lang.StringBuilder(bytes.length)
+    var valid       = true
     var codePoint   = 0
     var bytesNeeded = 0
     var bytesSeen   = 0
     var lower       = 0x80
     var upper       = 0xbf
     var i           = 0
+    def replace()   = {
+      sb.append('\ufffd')
+      valid = false
+    }
     while (i < bytes.length) {
       val b = bytes(i) & 0xff
       if (bytesNeeded == 0) {
@@ -162,11 +204,11 @@ object Location {
           if (b == 0xf4) upper = 0x8f
           bytesNeeded = 3
           codePoint = b & 0x7
-        } else sb.append('\ufffd')
+        } else replace()
         i += 1
       } else if (b < lower || b > upper) {
         // The sequence so far is invalid; `b` is decoded again as the start of the next one
-        sb.append('\ufffd')
+        replace()
         codePoint = 0
         bytesNeeded = 0
         bytesSeen = 0
@@ -186,8 +228,8 @@ object Location {
         i += 1
       }
     }
-    if (bytesNeeded != 0) sb.append('\ufffd')
-    sb.toString
+    if (bytesNeeded != 0) replace()
+    Decoded(sb.toString, valid)
   }
 
   /** The value of the ASCII hex digit `b`, or -1 if it isn't one */
