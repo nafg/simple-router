@@ -32,7 +32,9 @@ object Param {
     */
   case class QueryParamRep[A](key: String, strict: Boolean = false)(implicit val stringable: Stringable[A]) {
 
-    /** The values `texts` hold, in order: `None` if this is strict and one of them does not parse */
+    /** The values `texts` hold, in order. A text that does not parse is left out, or, if this is strict, makes the
+      * result `None`.
+      */
     private[simplerouter] def parseAll(texts: List[String]): Option[List[A]] =
       if (!strict) Some(texts.flatMap(stringable.parse(_)))
       else {
