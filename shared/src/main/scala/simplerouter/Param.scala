@@ -55,6 +55,8 @@ object Param {
   /** Declares a query parameter that may occur any number of times, each occurrence converted to and from a value. Its
     * part of the path's value is a `List[A]`.
     *
+    * To hold a list in one path segment or one query parameter instead, use [[Stringable.separatedList]].
+    *
     * @param key
     *   the query parameter's name
     * @example
