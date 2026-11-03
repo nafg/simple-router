@@ -29,12 +29,41 @@ object StringableDerivationProperties extends Properties("StringableDerivation")
     case class Link(next: Chain) extends Chain
   }
 
-  implicit val emptyStringable: Stringable[Empty]     = StringableDerivation.derived[Empty]
-  implicit val wrapperStringable: Stringable[Wrapper] = StringableDerivation.derived[Wrapper]
-  implicit val pairStringable: Stringable[Pair]       = StringableDerivation.derived[Pair]
-  implicit val nestedStringable: Stringable[Nested]   = StringableDerivation.derived[Nested]
-  implicit val targetStringable: Stringable[Target]   = StringableDerivation.derived[Target]
-  implicit val chainStringable: Stringable[Chain]     = StringableDerivation.derived[Chain]
+  case class Range(from: String, to: Option[String])
+  case class Optionals(pair: Option[Pair], nested: Option[Option[String]], last: Option[String])
+  case class Node(value: String, next: Option[Node])
+
+  sealed trait Filter
+  object Filter {
+    case class InRange(range: Range)      extends Filter
+    case class Limit(limit: Option[Long]) extends Filter
+  }
+
+  case class Flag(value: Option[Boolean])
+  object Flag {
+    implicit val optionBoolean: Stringable[Option[Boolean]] =
+      Stringable[Option[Boolean]] {
+        case "yes" => Some(Some(true))
+        case "no"  => Some(Some(false))
+        case "-"   => Some(None)
+        case _     => None
+      }(_.fold("-")(if (_) "yes" else "no"))
+  }
+
+  implicit val emptyStringable: Stringable[Empty]         = StringableDerivation.derived[Empty]
+  implicit val wrapperStringable: Stringable[Wrapper]     = StringableDerivation.derived[Wrapper]
+  implicit val pairStringable: Stringable[Pair]           = StringableDerivation.derived[Pair]
+  implicit val nestedStringable: Stringable[Nested]       = StringableDerivation.derived[Nested]
+  implicit val targetStringable: Stringable[Target]       = StringableDerivation.derived[Target]
+  implicit val chainStringable: Stringable[Chain]         = StringableDerivation.derived[Chain]
+  implicit val rangeStringable: Stringable[Range]         = StringableDerivation.derived[Range]
+  implicit val optionalsStringable: Stringable[Optionals] = StringableDerivation.derived[Optionals]
+  implicit val nodeStringable: Stringable[Node]           = StringableDerivation.derived[Node]
+  implicit val filterStringable: Stringable[Filter]       = StringableDerivation.derived[Filter]
+  implicit val flagStringable: Stringable[Flag]           = {
+    import Flag.optionBoolean
+    StringableDerivation.derived[Flag]
+  }
 
   /** Weighted toward the characters the format treats specially */
   private val text = Gen.listOf(Gen.frequency(1 -> Gen.oneOf(',', '~'), 2 -> Gen.alphaNumChar)).map(_.mkString)
@@ -52,9 +81,33 @@ object StringableDerivationProperties extends Properties("StringableDerivation")
       )
     )
 
+  implicit val arbRange: Arbitrary[Range]         =
+    Arbitrary(Gen.zip(text, Gen.option(text)).map { case (a, b) => Range(a, b) })
+  implicit val arbOptionals: Arbitrary[Optionals] =
+    Arbitrary(Gen.zip(Gen.option(arbPair.arbitrary), Gen.option(Gen.option(text)), Gen.option(text)).map {
+      case (a, b, c) => Optionals(a, b, c)
+    })
+  implicit val arbNode: Arbitrary[Node]           = Arbitrary(Gen.listOf(text).flatMap { values =>
+    Gen.oneOf(values.headOption.map(Gen.const).getOrElse(text), text).map { last =>
+      values.foldRight(Node(last, None))((value, next) => Node(value, Some(next)))
+    }
+  })
+  implicit val arbFilter: Arbitrary[Filter]       =
+    Arbitrary(
+      Gen.oneOf(
+        arbRange.arbitrary.map(Filter.InRange(_)),
+        Gen.option(Arbitrary.arbitrary[Long]).map(Filter.Limit(_))
+      )
+    )
+
   property("a case class round-trips") = roundTrip(pairStringable)
   property("a case class of case classes round-trips") = roundTrip(nestedStringable)
   property("a sealed trait round-trips") = roundTrip(targetStringable)
+
+  property("a case class with an Option field round-trips") = roundTrip(rangeStringable)
+  property("Options of case classes and of Options round-trip") = roundTrip(optionalsStringable)
+  property("a case class recursive through an Option round-trips") = roundTrip(nodeStringable)
+  property("a sealed trait with Option fields round-trips") = roundTrip(filterStringable)
 
   property("a case class with no fields is the empty text") =
     (emptyStringable.format(Empty()) ?= "") && (emptyStringable.parse("") ?= Some(Empty()))
@@ -78,4 +131,15 @@ object StringableDerivationProperties extends Properties("StringableDerivation")
   property("a recursive sealed trait") =
     (chainStringable.format(Chain.Link(Chain.Link(Chain.End))) ?= "Link,Link,End") &&
       (chainStringable.parse("Link,Link,End") ?= Some(Chain.Link(Chain.Link(Chain.End))))
+
+  property("None is the empty text") = (rangeStringable.format(Range("0900", None)) ?= "0900,") &&
+    (filterStringable.format(Filter.Limit(None)) ?= "Limit")
+  property("Some is the text of its value") = rangeStringable.format(Range("0900", Some("1700"))) ?= "0900,1700"
+  property("Some of an empty text or one starting with ~ has a ~ before it") =
+    (rangeStringable.format(Range("0900", Some(""))) ?= "0900,~") &&
+      (rangeStringable.format(Range("0900", Some("~a"))) ?= "0900,~~a") &&
+      (optionalsStringable.format(Optionals(None, Some(None), None)) ?= ",~~,")
+
+  property("a Stringable for an Option field is used if there is one") =
+    (flagStringable.format(Flag(None)) ?= "-") && (flagStringable.format(Flag(Some(true))) ?= "yes")
 }

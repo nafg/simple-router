@@ -51,6 +51,17 @@ private[derivation] object Encoding {
         }
     }
 
+  def option[A](element: Stringable[A]): Stringable[Option[A]] =
+    Stringable[Option[A]] { text =>
+      if (text.isEmpty) Some(None)
+      else element.parse(if (text.head == escape) text.tail else text).map(Some(_))
+    } {
+      case None        => ""
+      case Some(value) =>
+        val text = element.format(value)
+        if (text.isEmpty || text.head == escape) escape +: text else text
+    }
+
   /** One field of a case class `T` */
   final case class Field[T](format: T => String, parse: String => Option[Any])
 
