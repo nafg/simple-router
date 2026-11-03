@@ -25,6 +25,7 @@ lazy val core =
     .in(file("."))
     .settings(
       name := "core",
+      Compile / sourceGenerators += Def.task(PathAritySyntax.generate((Compile / sourceManaged).value)).taskValue,
       libraryDependencies ++=
         Seq(
           "org.scalatest"     %% "scalatest"       % "3.2.20"   % Test,

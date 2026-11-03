@@ -149,6 +149,13 @@ class RoutingTests extends AnyFunSuite with Matchers with Inside {
     files.parse(loc) should equal(Some(List("a", "b") ->: Some(3) ->: ()))
   }
 
+  test(">> and construct work for a path with more than five parameters") {
+    val seven = Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int]
+    val loc   = seven.construct(1, 2, 3, 4, 5, 6, 7)
+    loc should equal(Location(List("1", "2", "3", "4", "5", "6", "7")))
+    (seven >> { a => b => c => d => e => f => g => a + b + c + d + e + f + g }).run(loc) should equal(28)
+  }
+
   test("Sites") {
     val s = r & r2 & r3
 

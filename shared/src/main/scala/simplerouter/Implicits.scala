@@ -110,64 +110,23 @@ trait ImplicitsForToQueryParameter[In[_]] extends Implicits[In] {
   }
 }
 
-/** The DSL operators on [[Path]] values. `>>` and `construct` exist only for the parameter counts that have a
-  * `PathNHandlerSyntax` and `PathNBuildSyntax` class here; any path can use `>>*`, `>>*?` and [[Path.build]].
+/** The DSL operators on [[Path]] values. `>>` and `construct` exist only for the parameter counts [[PathAritySyntax]]
+  * covers, and for paths without parameters; any path can use `>>*`, `>>*?` and [[Path.build]].
   */
 trait PathCompanionImplicits
-    extends ImplicitsForToPath[λ[a => a]]
+    extends PathAritySyntax
     with ImplicitsForToSegment[λ[a => a]]
     with ImplicitsForToQueryParameter[λ[a => a]] {
   override protected type From[A] = Path[A]
   override protected def toPath[A](from: Path[A]) = from
 
-  implicit class Path0HandlerSyntax(self: Path[Unit])          extends Path0HandlerSyntaxBase(self)
-  implicit class Path1HandlerSyntax[Y](self: Path[Y ->: Unit]) extends PathNHandlerSyntax[Y ->: Unit](self) {
-    override type F[Z] = Y => Z
-    override protected def uncurry[Z](f: F[Z]) = { case y ->: () => f(y) }
-  }
-  implicit class Path2HandlerSyntax[Y, X](self: Path[X ->: Y ->: Unit])
-      extends PathNHandlerSyntax[X ->: Y ->: Unit](self) {
-    override type F[Z] = X => Y => Z
-    override protected def uncurry[Z](f: F[Z]) = { case x ->: y ->: () => f(x)(y) }
-  }
-  implicit class Path3HandlerSyntax[Y, X, W](self: Path[W ->: X ->: Y ->: Unit])
-      extends PathNHandlerSyntax[W ->: X ->: Y ->: Unit](self) {
-    override type F[Z] = W => X => Y => Z
-    override protected def uncurry[Z](f: F[Z]) = { case w ->: x ->: y ->: () => f(w)(x)(y) }
-  }
-  implicit class Path4HandlerSyntax[Y, X, W, V](self: Path[V ->: W ->: X ->: Y ->: Unit])
-      extends PathNHandlerSyntax[V ->: W ->: X ->: Y ->: Unit](self) {
-    override type F[Z] = V => W => X => Y => Z
-    override protected def uncurry[Z](f: F[Z]) = { case v ->: w ->: x ->: y ->: () => f(v)(w)(x)(y) }
-  }
-  implicit class Path5HandlerSyntax[Y, X, W, V, U](self: Path[U ->: V ->: W ->: X ->: Y ->: Unit])
-      extends PathNHandlerSyntax[U ->: V ->: W ->: X ->: Y ->: Unit](self) {
-    override type F[Z] = U => V => W => X => Y => Z
-    override protected def uncurry[Z](f: F[Z]) = { case u ->: v ->: w ->: x ->: y ->: () =>
-      f(u)(v)(w)(x)(y)
-    }
-  }
+  implicit class Path0HandlerSyntax(self: Path[Unit]) extends Path0HandlerSyntaxBase(self)
 
   /** `construct` builds a [[Location]] from a path's parameters, passed as separate arguments in order. It is
     * [[Path.build]] without the tuple.
     */
-  implicit class Path0BuildSyntax(self: Path[Unit])                                              {
+  implicit class Path0BuildSyntax(self: Path[Unit]) {
     def construct = self.build(())
-  }
-  implicit class Path1BuildSyntax[Z](self: Path[Z ->: Unit])                                     {
-    def construct(a: Z) = self.build(a ->: ())
-  }
-  implicit class Path2BuildSyntax[Z, Y](self: Path[Y ->: Z ->: Unit])                            {
-    def construct(y: Y, z: Z) = self.build(y ->: z ->: ())
-  }
-  implicit class Path3BuildSyntax[Z, Y, X](self: Path[X ->: Y ->: Z ->: Unit])                   {
-    def construct(x: X, y: Y, z: Z) = self.build(x ->: y ->: z ->: ())
-  }
-  implicit class Path4BuildSyntax[Z, Y, X, W](self: Path[W ->: X ->: Y ->: Z ->: Unit])          {
-    def construct(w: W, x: X, y: Y, z: Z) = self.build(w ->: x ->: y ->: z ->: ())
-  }
-  implicit class Path5BuildSyntax[Z, Y, X, W, V](self: Path[V ->: W ->: X ->: Y ->: Z ->: Unit]) {
-    def construct(v: V, w: W, x: X, y: Y, z: Z) = self.build(v ->: w ->: x ->: y ->: z ->: ())
   }
 }
 

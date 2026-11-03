@@ -20,6 +20,29 @@ object RouteTypesCompilationTest {
   val path5: Route[Int ->: Int ->: Int ->: Int ->: Int ->: Unit, Int] =
     Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] >>
       (a => b => c => d => e => a + b + c + d + e)
-  val string: Route[Unit, Int]                                        = "a" >> 1
-  val constructed: Location                                           = path1.path.construct(1)
+  val path6: Route[Int ->: Int ->: Int ->: Int ->: Int ->: Int ->: Unit, Int] =
+    Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] >>
+      (a1 => a2 => a3 => a4 => a5 => a6 => a1)
+  val path22: Route[
+    Int ->: Int ->: Int ->: Int ->: Int ->: Int ->: Int ->: Int ->: Int ->: Int ->: Int ->: Int ->: Int ->: Int ->:
+      Int ->: Int ->: Int ->: Int ->: Int ->: Int ->: Int ->: Int ->: Unit,
+    Int
+  ]                                                                           =
+    Param[Int] :/:
+      Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] :/:
+      Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] :/:
+      Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] :/: Param[Int] >>
+      (a1 =>
+        a2 =>
+          a3 =>
+            a4 =>
+              a5 =>
+                a6 =>
+                  a7 =>
+                    a8 =>
+                      a9 =>
+                        a10 => a11 => a12 => a13 => a14 => a15 => a16 => a17 => a18 => a19 => a20 => a21 => a22 => a1
+      )
+  val string: Route[Unit, Int]                                                = "a" >> 1
+  val constructed: Location                                                   = path1.path.construct(1)
 }
