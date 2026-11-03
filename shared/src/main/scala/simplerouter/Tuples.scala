@@ -25,3 +25,21 @@ trait TupleSyntax {
 
 /** [[TupleSyntax]] as an object, so its members can be imported */
 object Tuples extends TupleSyntax
+
+/** Evidence that the right-nested tuple `C` is `A`, with `B` in place of the `Unit` `A` ends with: e.g. `Int ->: Unit`
+  * and `String ->: Unit` make `Int ->: String ->: Unit`.
+  */
+final class TupleConcat[A, B, C] private (val join: (A, B) => C, val split: C => (A, B))
+
+object TupleConcat {
+  implicit def unit[B]: TupleConcat[Unit, B, B] = new TupleConcat((_, b) => b, ((), _))
+
+  implicit def pair[H, T, B, TB](implicit tail: TupleConcat[T, B, TB]): TupleConcat[(H, T), B, (H, TB)] =
+    new TupleConcat(
+      { case ((h, t), b) => (h, tail.join(t, b)) },
+      { case (h, tb) =>
+        val (t, b) = tail.split(tb)
+        ((h, t), b)
+      }
+    )
+}

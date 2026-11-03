@@ -110,6 +110,24 @@ class RoutingTests extends AnyFunSuite with Matchers with Inside {
     mapped.parse(Location("a" :: "" :: "b" :: Nil)) should equal(Some("" ->: ()))
   }
 
+  test("++ concatenates paths and their values") {
+    val userPosts = ("users" :/: Param[Long]) ++ ("posts" :&: Param[Int]("page"))
+    implicitly[userPosts.type <:< Path[Long ->: Option[Int] ->: Unit]]
+
+    val loc = userPosts.construct(42L, Some(2))
+    loc should equal(Location("users" :: "42" :: "posts" :: Nil, List("page" -> "2")))
+    userPosts.parse(loc) should equal(Some(42L ->: Some(2) ->: ()))
+    (userPosts >> { id => page => (id, page) }).run(loc) should equal((42L, Some(2)))
+    userPosts.parse(Location("users" :: "42" :: Nil)) should equal(None)
+  }
+
+  test("++ after ** adds query parameters") {
+    val files = ("files" :/: **) ++ (Param[Int]("page") :&: Path.root)
+    val loc   = files.construct(List("a", "b"), Some(3))
+    loc should equal(Location("files" :: "a" :: "b" :: Nil, List("page" -> "3")))
+    files.parse(loc) should equal(Some(List("a", "b") ->: Some(3) ->: ()))
+  }
+
   test("Sites") {
     val s = r & r2 & r3
 

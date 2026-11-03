@@ -64,6 +64,20 @@ sealed trait Path[A] {
     * match. Building does not consult `f`, and a `B` that is built parses back to itself only if `f(g(b)) == Some(b)`.
     */
   final def xmapPartial[B](f: A => Option[B])(g: B => A): Path[B] = Path.Mapped(this, f, g)
+
+  /** This path followed by `that`: its path segments are this path's, then `that`'s, and it has the query parameters of
+    * both. Its value is this path's, with `that`'s value in place of the `Unit` this path's value ends with.
+    *
+    * A path that ends with `**` takes all the remaining path segments, so if this path ends with it and `that` has path
+    * segments, the result matches no location.
+    *
+    * @example
+    *   {{{
+    * ("users" :/: Param[Long]) ++ ("posts" :&: Param[Int]("page"))   // Path[Long ->: Option[Int] ->: Unit]
+    *   }}}
+    */
+  final def ++[B, C](that: Path[B])(implicit concat: TupleConcat[A, B, C]): Path[C] =
+    Path.Concatenated(this, that, concat)
 }
 
 object Path extends PathCompanionImplicits {
@@ -207,5 +221,18 @@ object Path extends PathCompanionImplicits {
 
     override protected[simplerouter] def parsePrefix: Location => Option[(B, Location)] =
       path.parsePrefix(_).flatMap { case (a, rest) => f(a).map(_ -> rest) }
+  }
+
+  /** `first` followed by `second`, as [[Path.++]] makes it */
+  case class Concatenated[A, B, C](first: Path[A], second: Path[B], concat: TupleConcat[A, B, C]) extends Path[C] {
+    override protected[simplerouter] def encode = c => {
+      val (a, b) = concat.split(c)
+      first.encode(a).andThen(second.encode(b))
+    }
+
+    override protected[simplerouter] def parsePrefix: Location => Option[(C, Location)] =
+      first.parsePrefix(_).flatMap { case (a, rest) =>
+        second.parsePrefix(rest).map { case (b, rest2) => (concat.join(a, b), rest2) }
+      }
   }
 }
