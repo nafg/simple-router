@@ -1,7 +1,6 @@
 package simplerouter.derivation
 
-/** Derives a `Stringable` for a case class or sealed trait, with `derived`:
-  * {{{implicit val target: Stringable[Target] = StringableDerivation.derived[Target]}}}
+/** Derives a `Stringable` for a case class or sealed trait.
   *
   * Each field of a case class needs a `Stringable` of its own. Each subtype of a sealed trait uses its own `Stringable`
   * if there is one, and is otherwise derived as well.
@@ -13,7 +12,8 @@ package simplerouter.derivation
   * object, or a case class with no fields, as the empty text.
   *
   * A sealed trait is written as the simple name of the value's subtype, escaped the same way, followed by `,` and the
-  * text of the value as that subtype, unless that text is empty. The subtypes must have distinct simple names.
+  * text of the value as that subtype, unless that text is empty. The subtypes must have distinct simple names:
+  * `derived` throws an `IllegalArgumentException` if they don't.
   *
   * {{{
   * sealed trait Target
@@ -21,5 +21,8 @@ package simplerouter.derivation
   * case class ToGroup(id: Long)             extends Target // ToGroup,42
   * case class Named(name: String, id: Long) extends Target // Named,a~,b,42 for Named("a,b", 42)
   * }}}
+  *
+  * @example
+  *   {{{implicit val target: Stringable[Target] = StringableDerivation.derived[Target]}}}
   */
 object StringableDerivation extends StringableDerivationMagnolia
