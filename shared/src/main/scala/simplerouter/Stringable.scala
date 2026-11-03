@@ -48,16 +48,21 @@ object Stringable {
   /** A `Stringable` whose `parse` is `None` for a text on which the given `parse` throws a non-fatal exception */
   def attempt[A](parse: String => A)(format: A => String) = apply(s => Try(parse(s)).toOption)(format)
 
+  /** A `Stringable` that formats with `toString`, and whose `parse` is `None` for a text on which the given `parse`
+    * throws a non-fatal exception
+    */
+  def attemptFromToString[A](parse: String => A) = attempt(parse)(_.toString)
+
   implicit val string: Stringable[String]       = apply(Some(_))(identity)
-  implicit val long: Stringable[Long]           = attempt(_.toLong)(_.toString)
-  implicit val int: Stringable[Int]             = attempt(_.toInt)(_.toString)
+  implicit val long: Stringable[Long]           = attemptFromToString(_.toLong)
+  implicit val int: Stringable[Int]             = attemptFromToString(_.toInt)
   implicit val bool: Stringable[Boolean]        = fromToString {
     case "true"  => Some(true)
     case "false" => Some(false)
     case _       => None
   }
-  implicit val instant: Stringable[Instant]     = attempt(Instant.parse)(_.toString)
-  implicit val uuidStringable: Stringable[UUID] = attempt(UUID.fromString)(_.toString)
+  implicit val instant: Stringable[Instant]     = attemptFromToString(Instant.parse)
+  implicit val uuidStringable: Stringable[UUID] = attemptFromToString(UUID.fromString)
 
   /** `()` is `_` */
   implicit val unit: Stringable[Unit] = apply {
@@ -65,23 +70,23 @@ object Stringable {
     case _   => None
   }(_ => "_")
 
-  implicit val double: Stringable[Double]         = attempt(_.toDouble)(_.toString)
-  implicit val bigDecimal: Stringable[BigDecimal] = attempt(BigDecimal(_))(_.toString)
+  implicit val double: Stringable[Double]         = attemptFromToString(_.toDouble)
+  implicit val bigDecimal: Stringable[BigDecimal] = attemptFromToString(BigDecimal(_))
 
   /** ISO-8601, e.g. `PT1H30M` */
-  implicit val duration: Stringable[Duration] = attempt(Duration.parse)(_.toString)
+  implicit val duration: Stringable[Duration] = attemptFromToString(Duration.parse)
 
   /** ISO-8601, e.g. `2024-03-05` */
-  implicit val localDate: Stringable[LocalDate] = attempt(LocalDate.parse)(_.toString)
+  implicit val localDate: Stringable[LocalDate] = attemptFromToString(LocalDate.parse)
 
   /** ISO-8601, e.g. `10:15:30` */
-  implicit val localTime: Stringable[LocalTime] = attempt(LocalTime.parse)(_.toString)
+  implicit val localTime: Stringable[LocalTime] = attemptFromToString(LocalTime.parse)
 
   /** ISO-8601, e.g. `2024-03-05T10:15:30` */
-  implicit val localDateTime: Stringable[LocalDateTime] = attempt(LocalDateTime.parse)(_.toString)
+  implicit val localDateTime: Stringable[LocalDateTime] = attemptFromToString(LocalDateTime.parse)
 
   /** ISO-8601 with an offset, followed by the zone ID in brackets when the zone is not an offset, e.g.
     * `2024-03-05T10:15:30+01:00[Europe/Paris]`
     */
-  implicit val zonedDateTime: Stringable[ZonedDateTime] = attempt(ZonedDateTime.parse)(_.toString)
+  implicit val zonedDateTime: Stringable[ZonedDateTime] = attemptFromToString(ZonedDateTime.parse)
 }
