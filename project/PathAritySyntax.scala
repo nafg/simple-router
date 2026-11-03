@@ -29,6 +29,8 @@ object PathAritySyntax {
          |
          |  /** `construct` for a path with $n parameters */
          |  implicit class Path${n}BuildSyntax[$tparms](self: From[$tuple]) {
+         |
+         |    /** The [[Location]] the path describes for these parameters, in order: [[Path.build]] of their tuple */
          |    def construct(${vs.zip(ts).map { case (v, t) => s"$v: $t" }.mkString(", ")}) =
          |      toPath(self).build(${vs.mkString("", " ->: ", " ->: ()")})
          |  }
