@@ -45,6 +45,40 @@ class LocationTests extends AnyFunSuite with Matchers {
     Location(List("a", "..", "b")).toUrl should equal("/b")
   }
 
+  test("parsePathAndQuery decodes the path and query and ignores the fragment") {
+    Location.parsePathAndQuery("/a/b%20c?k=v%26w#f?x=y") should equal(Location(List("a", "b c"), List("k" -> "v&w")))
+  }
+
+  test("parsePathAndQuery parses the root as Nil") {
+    Location.parsePathAndQuery("/") should equal(Location(Nil))
+    Location.parsePathAndQuery("") should equal(Location(Nil))
+  }
+
+  test("parsePathAndQuery returns the normalized Location, resolving encoded dot segments too") {
+    Location.parsePathAndQuery("/a/../%2E%2e/b/./c") should equal(Location(List("b", "c")))
+    Location.parsePathAndQuery("//x/") should equal(Location(List("x", "")))
+  }
+
+  test("parsePathAndQuery keeps + in the path and decodes it as a space in the query") {
+    Location.parsePathAndQuery("/a+b?a+b=c+d") should equal(Location(List("a+b"), List("a b" -> "c d")))
+  }
+
+  test("parseQuery separates parameters on & and not on ;") {
+    Location.parseQuery("a=1;b=2&c") should equal(List("a" -> "1;b=2", "c" -> ""))
+  }
+
+  test("parseQuery drops one leading ?, skips empty parameters and splits on the first =") {
+    Location.parseQuery("??a=b=c&&=d&") should equal(List("?a" -> "b=c", "" -> "d"))
+  }
+
+  test("parseQuery keeps a % that doesn't start an escape and replaces invalid UTF-8 with U+FFFD") {
+    Location.parseQuery("a=%zz%4%&b=%C3%A9%FF") should equal(List("a" -> "%zz%4%", "b" -> "\u00e9\ufffd"))
+  }
+
+  test("parseQuery replaces each maximal invalid UTF-8 sequence with one U+FFFD") {
+    Location.parseQuery("a=%E4%B8%F7%93") should equal(List("a" -> "\ufffd\ufffd\ufffd"))
+  }
+
   test("Path(\"\") does not compile") {
     assertCompiles("""Path("a")""")
     assertDoesNotCompile("""Path("")""")

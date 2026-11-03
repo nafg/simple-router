@@ -64,6 +64,114 @@ case class Location(path: List[String], query: List[(String, String)] = Nil) {
 }
 
 object Location {
+
+  /** The [[Location]] of a path, optionally followed by `?` and a query string and by `#` and a fragment, as in an HTTP
+    * request target. The path is split on `/` and each segment is decoded as [[parseQuery]] decodes a key, except that
+    * `+` stays `+`. The query string is parsed with [[parseQuery]], and the fragment is ignored. The result is
+    * [[Location.normalized normalized]], so `parsePathAndQuery(loc.toUrl) == loc.normalized` for every `loc`.
+    */
+  def parsePathAndQuery(raw: String): Location = {
+    val (path, query) = raw.takeWhile(_ != '#').span(_ != '?')
+    Location(path.split("/", -1).toList.map(percentDecode(_, plusIsSpace = false)), parseQuery(query)).normalized
+  }
+
+  /** The parameters of the query string `raw`, parsed as the WHATWG URL standard's `URLSearchParams` parses it. A
+    * leading `?` is dropped. Parameters are separated by `&`, and not by `;`, which can occur in a key or value. Empty
+    * parameters are skipped. The first `=` in a parameter separates the key from the value, which is `""` if there is
+    * no `=`. In keys and values, `+` is a space, `%` followed by two hex digits is the byte they encode, and the bytes
+    * are decoded as UTF-8. A `%` that isn't followed by two hex digits stays `%`, and each maximal invalid UTF-8
+    * sequence becomes one U+FFFD, as the WHATWG Encoding standard specifies.
+    */
+  def parseQuery(raw: String): List[(String, String)] =
+    raw.stripPrefix("?").split("&", -1).toList.filter(_.nonEmpty).map { param =>
+      val (key, value) = param.span(_ != '=')
+      percentDecode(key, plusIsSpace = true) -> percentDecode(value.drop(1), plusIsSpace = true)
+    }
+
+  private def percentDecode(s: String, plusIsSpace: Boolean): String =
+    if (s.indexOf('%') < 0 && !(plusIsSpace && s.indexOf('+') >= 0)) s
+    else {
+      // UTF-8 encodes non-ASCII characters with non-ASCII bytes only, so the ASCII `%`, hex digits and `+` can be
+      // found among the bytes
+      val bytes = s.getBytes(StandardCharsets.UTF_8)
+      val out   = new java.io.ByteArrayOutputStream(bytes.length)
+      var i     = 0
+      while (i < bytes.length) {
+        val b = bytes(i)
+        if (b == '%' && i + 2 < bytes.length && hexValue(bytes(i + 1)) >= 0 && hexValue(bytes(i + 2)) >= 0) {
+          out.write(hexValue(bytes(i + 1)) * 16 + hexValue(bytes(i + 2)))
+          i += 3
+        } else {
+          out.write(if (plusIsSpace && b == '+') ' '.toInt else b.toInt)
+          i += 1
+        }
+      }
+      decodeUtf8(out.toByteArray)
+    }
+
+  /** Decodes `bytes` with the WHATWG Encoding standard's UTF-8 decoder, which replaces each maximal invalid subsequence
+    * with U+FFFD. Platforms' own decoders don't all do the same.
+    */
+  private def decodeUtf8(bytes: Array[Byte]): String = {
+    val sb          = new java.lang.StringBuilder(bytes.length)
+    var codePoint   = 0
+    var bytesNeeded = 0
+    var bytesSeen   = 0
+    var lower       = 0x80
+    var upper       = 0xbf
+    var i           = 0
+    while (i < bytes.length) {
+      val b = bytes(i) & 0xff
+      if (bytesNeeded == 0) {
+        if (b <= 0x7f) sb.append(b.toChar)
+        else if (b >= 0xc2 && b <= 0xdf) {
+          bytesNeeded = 1
+          codePoint = b & 0x1f
+        } else if (b >= 0xe0 && b <= 0xef) {
+          if (b == 0xe0) lower = 0xa0
+          if (b == 0xed) upper = 0x9f
+          bytesNeeded = 2
+          codePoint = b & 0xf
+        } else if (b >= 0xf0 && b <= 0xf4) {
+          if (b == 0xf0) lower = 0x90
+          if (b == 0xf4) upper = 0x8f
+          bytesNeeded = 3
+          codePoint = b & 0x7
+        } else sb.append('\ufffd')
+        i += 1
+      } else if (b < lower || b > upper) {
+        // The sequence so far is invalid; `b` is decoded again as the start of the next one
+        sb.append('\ufffd')
+        codePoint = 0
+        bytesNeeded = 0
+        bytesSeen = 0
+        lower = 0x80
+        upper = 0xbf
+      } else {
+        lower = 0x80
+        upper = 0xbf
+        codePoint = (codePoint << 6) | (b & 0x3f)
+        bytesSeen += 1
+        if (bytesSeen == bytesNeeded) {
+          sb.appendCodePoint(codePoint)
+          codePoint = 0
+          bytesNeeded = 0
+          bytesSeen = 0
+        }
+        i += 1
+      }
+    }
+    if (bytesNeeded != 0) sb.append('\ufffd')
+    sb.toString
+  }
+
+  /** The value of the ASCII hex digit `b`, or -1 if it isn't one */
+  private def hexValue(b: Byte): Int =
+    if (b >= '0' && b <= '9') b - '0'
+    else if (b >= 'a' && b <= 'f') b - 'a' + 10
+    else if (b >= 'A' && b <= 'F') b - 'A' + 10
+    else -1
+
   private def normalize(path: List[String]): List[String] = {
     val lastIndex = path.length - 1
     // A trailing `.` or `..` leaves a trailing slash, as `/a/b/..` resolves to `/a/`
