@@ -8,48 +8,62 @@ private class Extractor[-A, +B](f: A => Option[B]) {
   def unapply(a: A): Option[B] = f(a)
 }
 
-/** A path is a typesafe URL template. It consists of a chain of typed components, (path components and query
-  * parameters) which may be fixed strings, or string representations of some value
+/** A typesafe, reversible URL template: a chain of path segments followed by query parameters, each either fixed or
+  * holding a value. [[build]] turns a value into a [[Location]], and [[parse]] turns a `Location` back into the value.
+  *
+  * Write paths with the DSL rather than the case classes, e.g. `"users" :/: Param[Int] :&: Param[String]("tab")`.
   *
   * @tparam A
-  *   the type of data encoded in this `Path`
+  *   the value this path holds: its parameters' values as a right-nested tuple ending in `Unit`, e.g.
+  *   `Int ->: Option[String] ->: Unit` (see [[TupleSyntax]])
   */
 sealed trait Path[A] {
   protected[simplerouter] def encode: A => Location => Location
 
-  /** Returns the [[Location]] representing `param`
-    */
+  /** The [[Location]] this path describes for `param` */
   final def build(param: A): Location = encode(param)(Location(Nil))
 
+  /** The value `location` holds, if it matches this path. It matches only if this path accounts for every one of its
+    * path segments; query parameters this path does not declare are ignored. `location` is used as it is, not
+    * [[Location.normalized normalized]].
+    */
   def parse: Location => Option[A]
 
-  /** Given a route value, returns a `PartialFunction` that parses a [[Location]] and passes the parameters to the route
-    * value, if applicable. The `Location` is [[Location.normalized normalized]] first, so a route matches the URLs it
-    * builds whichever form of the path the caller has.
+  /** A function that [[parse parses]] a [[Location]] and passes its value to `handler`. It returns `None` if the
+    * location does not match or `handler` returns `None`. The `Location` is [[Location.normalized normalized]] first,
+    * so a route matches the URLs it builds whichever form of the path the caller has.
     */
   final def run[R](handler: A => Option[R]): Location => Option[R] = loc => parse(loc.normalized).flatMap(handler)
 }
 
 object Path extends PathCompanionImplicits {
+
+  /** The path with no segments, which is the root, `/` */
   val empty = Segment.Empty
 
-  /** A path consisting of the single segment `literal`, which must not be empty: the root is [[empty]] */
+  /** A path consisting of the single segment `literal`. The root is [[empty]].
+    *
+    * @throws java.lang.IllegalArgumentException
+    *   if `literal` is empty. An empty string literal is rejected at compile time instead.
+    */
   def apply(literal: String): Segment.Literal[Unit] = {
     require(literal.nonEmpty, "Path(\"\") is not a path segment: use Path.empty for the root")
     Segment.Literal(literal, empty)
   }
 
+  /** Never compiles: it makes `Path("")` a compile error. The root is [[empty]]. */
   def apply(literal: "")(implicit noEmptyLiteral: NoEmptyLiteral): Nothing = ???
 
   /** Has no instances, so that writing an empty path literal fails to compile with this message */
   @implicitNotFound("\"\" is not a path segment: use Path.empty for the root")
   sealed abstract class NoEmptyLiteral
 
+  /** A [[Path]] that starts with a path segment, or ends the chain */
   sealed trait Segment[A] extends Path[A]
   object Segment {
 
-    /** Every [[Path]] chain ends with [[Empty]] (the empty `Path`), or [[All]] ([[syntax.**]]). There is only one
-      * [[Empty]] instance, aliased as [[Empty]]. However, the DSL does not require you to actually write [[Empty]].
+    /** The path with no segments, also available as [[Path.empty]]. It matches a [[Location]] with no path segments. A
+      * chain ends with it unless it ends with [[All]]; the DSL adds it for you.
       */
     case object Empty extends Path.Segment[Unit] {
       override protected[simplerouter] def encode = _ => identity
@@ -60,8 +74,8 @@ object Path extends PathCompanionImplicits {
       }
     }
 
-    /** Every [[Path]] chain ends with [[Empty]], or [[All]]. `PAny` represents all the (remaining) url path components
-      * as one `List[String]`. There is only one `PAny` instance, aliased as `PAny`.
+    /** Matches all the remaining path segments, which its part of the value holds as a `List[String]`. It ends a chain.
+      * Also available as `syntax.**`.
       */
     case object All extends Path.Segment[List[String] -> Unit] {
       override protected[simplerouter] def encode = param => _ ++ param._1
@@ -69,8 +83,7 @@ object Path extends PathCompanionImplicits {
       override def parse: Location => Option[(List[String], Unit)] = loc => Some(loc.path ->: ())
     }
 
-    /** [[Literal]] is a fixed-string url path component. It is not converted to or from a value.
-      */
+    /** The fixed path segment `component`, followed by `next`. It adds nothing to the path's value. */
     case class Literal[A](component: String, next: Path[A]) extends Path.Segment[A] {
       override protected[simplerouter] def encode = param => l => next.encode(param)(l :+ component)
 
@@ -80,8 +93,8 @@ object Path extends PathCompanionImplicits {
       }
     }
 
-    /** [[Parameter]] is a url path component that is converted to and from a typed value. The actual conversion is
-      * provided by `arg`.
+    /** A path segment holding a value, converted by `param`'s [[Stringable]], followed by `next`. A location whose
+      * segment `param` cannot parse does not match.
       */
     case class Parameter[A, B](param: Param.SegmentParam[A], next: Path[B]) extends Path.Segment[A -> B] {
       override protected[simplerouter] def encode = { case a -> b =>
@@ -95,13 +108,14 @@ object Path extends PathCompanionImplicits {
     }
   }
 
-  /** Marker trait, used by the DSL so that `:&:` is used rather than `:/:` */
+  /** A [[Path]] that starts with a query parameter */
   sealed trait QueryParameter[A] extends Path[A]
   object QueryParameter {
 
-    /** An optional named url query parameter that is converted to and from a typed value. The actual conversion is
-      * provided by `arg`. The routing function receives None if the url does not contain the query parameter. However
-      * if it contains it, but `param` does not parse it, then the `Path` does not match.
+    /** An optional query parameter holding a value, converted by `param`'s [[Stringable]], followed by `next`. Its part
+      * of the value is `None` when the location has no query parameter named `param.key`. Otherwise it is the first
+      * occurrence's value, and if `param` cannot parse that, the location does not match. Later occurrences are
+      * ignored.
       */
     case class Optional[A, B](param: Param.QueryParam[A], next: Path[B]) extends QueryParameter[Option[A] -> B] {
       private val locParam = new Extractor((_: Location).takeParam(param.key))
@@ -124,8 +138,9 @@ object Path extends PathCompanionImplicits {
       }
     }
 
-    /** A repeatable named url query parameter, each occurrence of which is converted to and from a typed `List` of
-      * values. The actual conversion is provided by `arg`.
+    /** A query parameter that may occur any number of times, followed by `next`. Its part of the value is the list of
+      * the values of every occurrence of `params.key`, in order, each converted by `params`'s [[Stringable]].
+      * Occurrences that `params` cannot parse are left out of the list; they do not stop the location from matching.
       */
     case class Repeated[A, B](params: Param.QueryParamRep[A], next: Path[B]) extends QueryParameter[List[A] -> B] {
       private val locParams = new Extractor((loc: Location) => Some(loc.takeParams(params.key)))
