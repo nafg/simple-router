@@ -66,6 +66,13 @@ class RoutingTests extends AnyFunSuite with Matchers with Inside {
     r.run(Location("" :: "add" :: "10" :: "plus" :: "20" :: "please" :: Nil)) should equal(30)
   }
 
+  test("Parsing matches the normalized location, as running does") {
+    Path.empty.parse(Location("" :: Nil)) should equal(Some(()))
+    p.parse(Location("x" :: ".." :: "add" :: "10" :: "plus" :: "." :: "20" :: "please" :: Nil)) should
+      equal(Some(10 ->: 20 ->: ()))
+    p.parse(Location("" :: "add" :: "10" :: "plus" :: "20" :: "please" :: Nil)) should equal(Some(10 ->: 20 ->: ()))
+  }
+
   test("Sites") {
     val s = r & r2 & r3
 
