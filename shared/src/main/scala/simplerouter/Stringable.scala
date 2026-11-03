@@ -5,10 +5,9 @@ import java.util.UUID
 
 import scala.util.Try
 
-/** A typeclass for converting values to and from strings, used by a [[Param]] to read and write its part of a URL.
+/** A typeclass for converting values to and from strings.
   *
-  * `parse` must accept every string `format` produces and give back the original value, or a route will not match the
-  * URLs its own path builds.
+  * `parse` must accept every string `format` produces and give back the original value.
   */
 trait Stringable[A] { outer =>
 
@@ -36,7 +35,7 @@ trait Stringable[A] { outer =>
   def xmapPartial[B](f: A => Option[B])(g: B => A) = Stringable(outer.parse(_).flatMap(f))(b => outer.format(g(b)))
 }
 
-/** Constructors, and the instances for `String`, `Long`, `Int`, `Boolean`, `java.time.Instant` and `java.util.UUID` */
+/** Constructors, and the built-in instances */
 object Stringable {
   class Impl[A](override val parse: String => Option[A])(override val format: A => String) extends Stringable[A]
 

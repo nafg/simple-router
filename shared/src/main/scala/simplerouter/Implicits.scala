@@ -79,9 +79,7 @@ trait ImplicitsForToSegment[In[_]] extends Implicits[In] {
   }
 }
 
-/** Adds `:&:`, which joins the path segments to its left to the query parameters to its right. A query parameter can
-  * only be prepended with `:&:`, never `:/:`.
-  */
+/** Adds `:&:`, which joins the path segments to its left to the query parameters to its right */
 trait ImplicitsForToQueryParameter[In[_]] extends Implicits[In] {
   implicit class PathQueryParameterSyntax[A](self: From[A]) {
 
@@ -112,8 +110,8 @@ trait ImplicitsForToQueryParameter[In[_]] extends Implicits[In] {
   }
 }
 
-/** The DSL operators on [[Path]] values. `>>` and `construct` exist for paths with up to five parameters; a path with
-  * more can still use `>>*`, `>>*?` and [[Path.build]].
+/** The DSL operators on [[Path]] values. `>>` and `construct` exist only for the parameter counts that have a
+  * `PathNHandlerSyntax` and `PathNBuildSyntax` class here; any path can use `>>*`, `>>*?` and [[Path.build]].
   */
 trait PathCompanionImplicits
     extends ImplicitsForToPath[λ[a => a]]

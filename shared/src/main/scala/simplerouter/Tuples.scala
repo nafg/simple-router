@@ -23,5 +23,5 @@ trait TupleSyntax {
   }
 }
 
-/** [[TupleSyntax]], for importing without the rest of [[syntax]] */
+/** [[TupleSyntax]] as an object, so its members can be imported */
 object Tuples extends TupleSyntax
