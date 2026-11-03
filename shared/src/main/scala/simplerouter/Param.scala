@@ -1,7 +1,12 @@
 package simplerouter
 import simplerouter.Tuples.->:
 
+/** Declares the typed parts of a [[Path]]: path segments and query parameters whose text is converted to and from a
+  * value by a [[Stringable]].
+  */
 object Param {
+
+  /** A path segment holding a value of type `A`. Create one with `Param[A]`. */
   case class SegmentParam[A]()(implicit val stringable: Stringable[A])
   object SegmentParam extends ImplicitsForTuple2Path[λ[a => a]]
       with ImplicitsForToSegment[->:[_, Unit]] {
@@ -10,6 +15,7 @@ object Param {
       Path.Segment.Parameter(from, Path.empty)
   }
 
+  /** An optional query parameter named `key`, holding a value of type `A`. Create one with `Param[A](key)`. */
   case class QueryParam[A](key: String)(implicit val stringable: Stringable[A])
   object QueryParam extends ImplicitsForTuple2Path[Option]
       with ImplicitsForToQueryParameter[λ[a => (Option[a], Unit)]] {
@@ -18,6 +24,9 @@ object Param {
       Path.QueryParameter.Optional(from, Path.empty)
   }
 
+  /** A query parameter named `key` that may occur any number of times, each occurrence holding a value of type `A`.
+    * Create one with [[Param.repeatable]].
+    */
   case class QueryParamRep[A](key: String)(implicit val stringable: Stringable[A])
   object QueryParamRep extends ImplicitsForTuple2Path[List]
       with ImplicitsForToQueryParameter[λ[a => (List[a], Unit)]] {
@@ -26,28 +35,30 @@ object Param {
       Path.QueryParameter.Repeated(from, Path.empty)
   }
 
-  /** Declare a path component that is converted to and from a value
+  /** Declares a path segment that is converted to and from a value. Its part of the path's value is an `A`.
     *
     * @example
     *   {{{"main" :/: Param[Int]   // e.g. /main/10}}}
     */
   def apply[A: Stringable]: SegmentParam[A] = SegmentParam[A]()
 
-  /** Declare a url query parameter that is converted to and from a value
+  /** Declares an optional query parameter that is converted to and from a value. Its part of the path's value is an
+    * `Option[A]`.
     *
     * @param key
-    *   the query parameter key
+    *   the query parameter's name
     * @example
-    *   {{{"main" :/: Param[Int]("item")   // e.g. /main?item=10}}}
+    *   {{{"main" :&: Param[Int]("item")   // e.g. /main?item=10}}}
     */
   def apply[A: Stringable](key: String) = new QueryParam[A](key)
 
-  /** Declare a repeatable url query parameter that is converted to and from a value
+  /** Declares a query parameter that may occur any number of times, each occurrence converted to and from a value. Its
+    * part of the path's value is a `List[A]`.
     *
     * @param key
-    *   the query parameter key
+    *   the query parameter's name
     * @example
-    *   {{{"main" :/: param[Int]("options")   // e.g. /main/options=10&options=20}}}
+    *   {{{"main" :&: Param.repeatable[Int]("option")   // e.g. /main?option=10&option=20}}}
     */
   def repeatable[A: Stringable](key: String) = new QueryParamRep[A](key)
 }
