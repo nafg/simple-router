@@ -20,6 +20,9 @@ trait Routes[+A] {
     */
   def run: PartialFunction[Location, A]
 
+  /** The value [[run]] gives for `location`, or `None` if it isn't defined for it */
+  final def runOption(location: Location): Option[A] = run.lift(location)
+
   /** These routes, with `f` applied to each value they yield. They match the same locations.
     *
     * @example
