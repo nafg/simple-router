@@ -54,29 +54,38 @@ case class Location(path: List[String], query: List[(String, String)] = Nil) {
   /** This `Location`'s [[normalized]] path and its query as a URL-encoded string, starting with `/`, e.g.
     * `/a/b%20c?k=v`. Each segment, key and value is encoded with [[Location.encodeComponent]].
     */
-  def toUrl: String = {
-    val q =
-      if (query.isEmpty) ""
-      else
-        "?" + query.map { case (k, v) => Location.encodeComponent(k) + "=" + Location.encodeComponent(v) }.mkString("&")
-    normalized.path.map(Location.encodeComponent).mkString("/", "/", q)
-  }
+  def toUrl: String = encodedPath + Location.querySuffix(encodedQuery)
 
-  /** `base` followed by the URL the parameterless `toUrl` renders, after dropping one trailing `/` from `base`: with
-    * the base `https://example.com/app/`, `Location(List("a"))` is `https://example.com/app/a`. `base` is not encoded.
+  /** `base` with this `Location`'s path appended to its path and this `Location`'s query parameters appended to its
+    * query: with the base `https://example.com/app?org=5`, `Location(List("a"), List("k" -> "v"))` is
+    * `https://example.com/app/a?org=5&k=v`. One trailing `/` is dropped from the base's path. The base is used as it
+    * is, without encoding, except that an empty query (a bare `?`) is dropped. The path and query parameters are
+    * encoded as the parameterless `toUrl` encodes them.
     *
     * @param base
-    *   a URL-encoded URL with no query or fragment
+    *   a URL-encoded URL with no fragment
     * @throws java.lang.IllegalArgumentException
-    *   if `base` contains `?` or `#`
+    *   if `base` contains `#`
     */
   def toUrl(base: String): String = {
-    require(base.indexOf('?') < 0 && base.indexOf('#') < 0, s"The base URL '$base' has a query or fragment")
-    base.stripSuffix("/") + toUrl
+    require(base.indexOf('#') < 0, s"The base URL '$base' has a fragment")
+    val (basePath, baseQuery) = base.span(_ != '?')
+    val query                 = List(baseQuery.drop(1), encodedQuery).filter(_.nonEmpty).mkString("&")
+    basePath.stripSuffix("/") + encodedPath + Location.querySuffix(query)
   }
+
+  /** The [[normalized]] path, encoded, starting with `/` */
+  private def encodedPath = normalized.path.map(Location.encodeComponent).mkString("/", "/", "")
+
+  /** The query parameters, encoded and separated by `&`, without a `?`; empty if there are none */
+  private def encodedQuery =
+    query.map { case (k, v) => Location.encodeComponent(k) + "=" + Location.encodeComponent(v) }.mkString("&")
 }
 
 object Location {
+
+  /** `?` followed by `query`, or `""` if `query` is empty */
+  private def querySuffix(query: String) = if (query.isEmpty) "" else "?" + query
 
   /** The [[Location]] of a request target: a path, optionally followed by `?` and a query string and by `#` and a
     * fragment. `raw` is not an absolute URL: in `https://example.com/a`, the scheme and host would be read as path

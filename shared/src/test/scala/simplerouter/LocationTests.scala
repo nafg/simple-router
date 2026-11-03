@@ -57,9 +57,24 @@ class LocationTests extends AnyFunSuite with Matchers {
     Location(List("a")).toUrl("https://example.com/app//") should equal("https://example.com/app//a")
   }
 
-  test("toUrl(base) rejects a base with a query or fragment") {
-    an[IllegalArgumentException] should be thrownBy Location(List("a")).toUrl("https://example.com/?x=1")
+  test("toUrl(base) puts the base's query parameters first, as they are") {
+    Location(List("users", "42"), List("tab" -> "posts")).toUrl("https://x.com/app?org=5") should
+      equal("https://x.com/app/users/42?org=5&tab=posts")
+    Location(List("a"), List("k" -> "v w")).toUrl("https://x.com/?q=a%20b&r") should
+      equal("https://x.com/a?q=a%20b&r&k=v%20w")
+    Location(List("a")).toUrl("https://x.com/app?org=5") should equal("https://x.com/app/a?org=5")
+  }
+
+  test("toUrl(base) drops one trailing / from the base's path, and an empty query") {
+    Location(List("a"), List("k" -> "v")).toUrl("https://x.com/app/?org=5") should
+      equal("https://x.com/app/a?org=5&k=v")
+    Location(List("a"), List("k" -> "v")).toUrl("https://x.com/app?") should equal("https://x.com/app/a?k=v")
+    Location(List("a")).toUrl("https://x.com/app/?") should equal("https://x.com/app/a")
+  }
+
+  test("toUrl(base) rejects a base with a fragment") {
     an[IllegalArgumentException] should be thrownBy Location(List("a")).toUrl("https://example.com/#top")
+    an[IllegalArgumentException] should be thrownBy Location(List("a")).toUrl("https://example.com/?x=1#top")
   }
 
   test("parsePathAndQuery decodes the path and query and ignores the fragment") {
