@@ -121,6 +121,19 @@ class RoutingTests extends AnyFunSuite with Matchers with Inside {
     userPosts.parse(Location("users" :: "42" :: Nil)) should equal(None)
   }
 
+  test("++ can add a tail whose value isn't a tuple") {
+    case class Page(number: Option[Int], tags: List[String])
+    val page  = (Param[Int]("page") :&: Param.repeatable[String]("tag"))
+      .xmap { case n ->: tags ->: () => Page(n, tags) }(p => p.number ->: p.tags ->: ())
+    val posts = ("users" :/: Param[Long] :/: "posts" :/: Param[String]) ++ page
+    implicitly[posts.type <:< Path[Long ->: String ->: Page]]
+
+    val value = 42L ->: "new" ->: Page(Some(2), List("a"))
+    val loc   = posts.build(value)
+    loc should equal(Location("users" :: "42" :: "posts" :: "new" :: Nil, List("tag" -> "a", "page" -> "2")))
+    posts.parse(loc) should equal(Some(value))
+  }
+
   test("++ after ** adds query parameters") {
     val files = ("files" :/: **) ++ (Param[Int]("page") :&: Path.root)
     val loc   = files.construct(List("a", "b"), Some(3))

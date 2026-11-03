@@ -69,7 +69,8 @@ sealed trait Path[A] {
     * both. Its value is this path's, with `that`'s value in place of the `Unit` this path's value ends with.
     *
     * A path that ends with `**` takes all the remaining path segments, so if this path ends with it and `that` has path
-    * segments, the result matches no location.
+    * segments, the result matches no location. The two paths should not declare query parameters with the same key:
+    * this path takes the occurrences of its keys first, so a location built for a value need not parse back to it.
     *
     * @example
     *   {{{
