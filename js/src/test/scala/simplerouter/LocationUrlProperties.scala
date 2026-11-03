@@ -3,7 +3,7 @@ package simplerouter
 import scala.scalajs.js
 import scala.scalajs.js.URIUtils.decodeURIComponent
 
-import org.scalacheck.Prop._
+import org.scalacheck.Prop.*
 import org.scalacheck.util.Pretty
 import org.scalacheck.{Gen, Properties, Test}
 import org.scalajs.dom.URL

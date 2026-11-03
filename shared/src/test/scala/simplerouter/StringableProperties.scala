@@ -2,7 +2,7 @@ package simplerouter
 
 import java.time.Instant
 
-import org.scalacheck.Prop._
+import org.scalacheck.Prop.*
 import org.scalacheck.{Arbitrary, Properties}
 
 object StringableProperties extends Properties("Stringable") {

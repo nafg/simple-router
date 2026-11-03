@@ -51,24 +51,24 @@ class LocationTests extends AnyFunSuite with Matchers {
   }
 
   test("\"\" :/: … does not compile") {
-    assertCompiles("""import simplerouter.syntax._; "x" :/: "a"""")
-    assertDoesNotCompile("""import simplerouter.syntax._; "" :/: "a"""")
+    assertCompiles("""import simplerouter.syntax.*; "x" :/: "a"""")
+    assertDoesNotCompile("""import simplerouter.syntax.*; "" :/: "a"""")
   }
 
   test("\"\" :&: … does not compile") {
-    assertCompiles("""import simplerouter.syntax._; "x" :&: Param[Int]("a")""")
-    assertDoesNotCompile("""import simplerouter.syntax._; "" :&: Param[Int]("a")""")
+    assertCompiles("""import simplerouter.syntax.*; "x" :&: Param[Int]("a")""")
+    assertDoesNotCompile("""import simplerouter.syntax.*; "" :&: Param[Int]("a")""")
   }
 
   test("Path, :/: and :&: reject an empty literal that isn't a compile-time constant") {
     val empty = ""
     an[IllegalArgumentException] should be thrownBy Path(empty)
     an[IllegalArgumentException] should be thrownBy {
-      import simplerouter.syntax._
+      import simplerouter.syntax.*
       empty :/: "a"
     }
     an[IllegalArgumentException] should be thrownBy {
-      import simplerouter.syntax._
+      import simplerouter.syntax.*
       empty :&: Param[Int]("a")
     }
   }
