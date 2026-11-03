@@ -18,11 +18,10 @@ object StringablePart extends LowPriorityStringableParts {
 
 private[derivation] trait LowPriorityStringableParts {
 
-  /** Writes an `Option` the way [[StringableDerivation]] describes
-    *
-    * Its result type is no more specific than [[StringablePart.fromStringable]]'s, so that `fromStringable` takes
-    * priority when there is a `Stringable` for the `Option` type.
+  /** Writes an `Option` the way [[StringableDerivation]] describes, if there is no `Stringable` for the `Option` type
     */
+  // The result type is no more specific than fromStringable's, so that on Scala 2 a Stringable for the Option type
+  // takes priority by fromStringable being in the subclass, rather than the two being ambiguous
   implicit def option[O, A](implicit isOption: O =:= Option[A], part: => StringablePart[A]): StringablePart[O] =
     isOption.flip.substituteCo(new StringablePart(Encoding.option(part.stringable)))
 }

@@ -87,10 +87,8 @@ object StringableDerivationProperties extends Properties("StringableDerivation")
     Arbitrary(Gen.zip(Gen.option(arbPair.arbitrary), Gen.option(Gen.option(text)), Gen.option(text)).map {
       case (a, b, c) => Optionals(a, b, c)
     })
-  implicit val arbNode: Arbitrary[Node]           = Arbitrary(Gen.listOf(text).flatMap { values =>
-    Gen.oneOf(values.headOption.map(Gen.const).getOrElse(text), text).map { last =>
-      values.foldRight(Node(last, None))((value, next) => Node(value, Some(next)))
-    }
+  implicit val arbNode: Arbitrary[Node]           = Arbitrary(Gen.nonEmptyListOf(text).map { values =>
+    values.init.foldRight(Node(values.last, None))((value, next) => Node(value, Some(next)))
   })
   implicit val arbFilter: Arbitrary[Filter]       =
     Arbitrary(
