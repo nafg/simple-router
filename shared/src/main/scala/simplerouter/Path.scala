@@ -39,6 +39,26 @@ sealed trait Path[A] {
     * location does not match or `handler` returns `None`.
     */
   final def run[R](handler: A => Option[R]): Location => Option[R] = loc => parse(loc).flatMap(handler)
+
+  /** A `Path[B]` that matches the same locations as this path, and holds a `B` where this path holds the `A` it
+    * corresponds to
+    *
+    * @param f
+    *   converts a parsed `A` to a `B`
+    * @param g
+    *   converts a `B` to the `A` to build
+    * @example
+    *   {{{
+    * case class Page(number: Option[Int], tags: List[String])
+    * val page = (Param[Int]("page") :&: Param.repeatable[String]("tag"))
+    *   .xmap { case n ->: tags ->: () => Page(n, tags) }(p => p.number ->: p.tags ->: ())
+    *   }}}
+    */
+  final def xmap[B](f: A => B)(g: B => A): Path[B] = Path.Mapped(this, (a: A) => Some(f(a)), g)
+
+  /** Like [[xmap]], for when not every `A` corresponds to a `B`: a location whose `A` `f` maps to `None` does not match
+    */
+  final def xmapPartial[B](f: A => Option[B])(g: B => A): Path[B] = Path.Mapped(this, f, g)
 }
 
 object Path extends PathCompanionImplicits {
@@ -169,5 +189,17 @@ object Path extends PathCompanionImplicits {
         case _                             => None
       }
     }
+  }
+
+  /** Matches the locations `path` matches, holding the `B` that `f` gives for `path`'s value. A location for whose
+    * value `f` gives `None` does not match. [[Path.xmap]] and [[Path.xmapPartial]] create one.
+    *
+    * @param g
+    *   gives the value of `path` to build for a `B`
+    */
+  case class Mapped[A, B](path: Path[A], f: A => Option[B], g: B => A) extends Path[B] {
+    override protected[simplerouter] def encode = b => path.encode(g(b))
+
+    override protected[simplerouter] def parseAsIs: Location => Option[B] = path.parseAsIs(_).flatMap(f)
   }
 }
