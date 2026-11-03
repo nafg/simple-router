@@ -1,6 +1,6 @@
 package simplerouter
 
-import java.time.Instant
+import java.time.{Duration, Instant, LocalDate, LocalDateTime, LocalTime, ZonedDateTime}
 import java.util.UUID
 
 import scala.util.Try
@@ -58,4 +58,30 @@ object Stringable {
   }
   implicit val instant: Stringable[Instant]     = attempt(Instant.parse)(_.toString)
   implicit val uuidStringable: Stringable[UUID] = attempt(UUID.fromString)(_.toString)
+
+  /** `()` is `_` */
+  implicit val unit: Stringable[Unit] = apply {
+    case "_" => Some(())
+    case _   => None
+  }(_ => "_")
+
+  implicit val double: Stringable[Double]         = attempt(_.toDouble)(_.toString)
+  implicit val bigDecimal: Stringable[BigDecimal] = attempt(BigDecimal(_))(_.toString)
+
+  /** ISO-8601, e.g. `PT1H30M` */
+  implicit val duration: Stringable[Duration] = attempt(Duration.parse)(_.toString)
+
+  /** ISO-8601, e.g. `2024-03-05` */
+  implicit val localDate: Stringable[LocalDate] = attempt(LocalDate.parse)(_.toString)
+
+  /** ISO-8601, e.g. `10:15:30` */
+  implicit val localTime: Stringable[LocalTime] = attempt(LocalTime.parse)(_.toString)
+
+  /** ISO-8601, e.g. `2024-03-05T10:15:30` */
+  implicit val localDateTime: Stringable[LocalDateTime] = attempt(LocalDateTime.parse)(_.toString)
+
+  /** ISO-8601 with an offset, followed by the zone ID in brackets when the zone is not an offset, e.g.
+    * `2024-03-05T10:15:30+01:00[Europe/Paris]`
+    */
+  implicit val zonedDateTime: Stringable[ZonedDateTime] = attempt(ZonedDateTime.parse)(_.toString)
 }
