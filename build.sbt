@@ -11,7 +11,7 @@ scalacOptions ++=
   ScalacOptions.all(scalaVersion.value)(
     (opts: options.Common) => opts.deprecation ++ opts.feature,
     (opts: options.V2_13) => opts.Xsource("3") ++ opts.unchecked,
-    (opts: options.V3_8) => opts.YkindProjector("")
+    (opts: options.V3_8) => opts.XkindProjector("")
   )
 
 mergifyExtraConditions := Seq(
@@ -31,7 +31,7 @@ lazy val core =
         ) ++
           PartialFunction.condOpt(CrossVersion.partialVersion(scalaVersion.value)) {
             case Some((2, _)) => compilerPlugin(
-                ("org.typelevel" % "kind-projector" % "0.13.4" cross CrossVersion.full).platform(Platform.jvm)
+                ("org.typelevel" % "kind-projector" % "0.13.4").cross(CrossVersion.full).platform(Platform.jvm)
               )
           }
     )
