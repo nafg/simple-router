@@ -43,7 +43,9 @@ sealed trait Path[A] {
 
 object Path extends PathCompanionImplicits {
 
-  /** The root, `/`: the path with no segments. It matches only a [[Location]] with no path segments. */
+  /** The root, `/`: the path with no segments. It matches a [[Location]] whose [[Location.normalized normalized]] path
+    * has no segments.
+    */
   val root = Segment.Empty
 
   /** The path with no segments, the same as [[root]] */
