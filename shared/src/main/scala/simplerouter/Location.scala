@@ -73,8 +73,9 @@ object Location {
     */
   def parsePathAndQuery(raw: String): Location = decodePathAndQuery(raw).value
 
-  /** [[parsePathAndQuery]] of `raw`, or `None` if the part of `raw` before any `#` has a `%` that isn't followed by two
-    * hex digits, an unpaired surrogate, or a path segment, key or value whose decoded bytes aren't valid UTF-8
+  /** `None` if the part of `raw` before any `#` has a `%` that isn't followed by two hex digits, an unpaired surrogate,
+    * or a path segment, key or value whose decoded bytes aren't valid UTF-8; otherwise `Some` of what
+    * [[parsePathAndQuery]] returns for `raw`
     */
   def parsePathAndQueryStrict(raw: String): Option[Location] = decodePathAndQuery(raw).toOption
 
@@ -88,8 +89,8 @@ object Location {
     */
   def parseQuery(raw: String): List[(String, String)] = decodeQuery(raw).value
 
-  /** [[parseQuery]] of `raw`, or `None` if `raw` has a `%` that isn't followed by two hex digits, an unpaired
-    * surrogate, or a key or value whose decoded bytes aren't valid UTF-8
+  /** `None` if `raw` has a `%` that isn't followed by two hex digits, an unpaired surrogate, or a key or value whose
+    * decoded bytes aren't valid UTF-8; otherwise `Some` of what [[parseQuery]] returns for `raw`
     */
   def parseQueryStrict(raw: String): Option[List[(String, String)]] = decodeQuery(raw).toOption
 
