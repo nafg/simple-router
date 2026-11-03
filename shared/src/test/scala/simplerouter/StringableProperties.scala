@@ -3,7 +3,7 @@ package simplerouter
 import java.time.*
 
 import org.scalacheck.Prop.*
-import org.scalacheck.{Arbitrary, Gen, Properties}
+import org.scalacheck.{Arbitrary, Gen, Prop, Properties}
 
 object StringableProperties extends Properties("Stringable") {
   implicit def arbInstant: Arbitrary[Instant] = Arbitrary(Arbitrary.arbitrary[Long].map(Instant.ofEpochMilli))
@@ -46,4 +46,13 @@ object StringableProperties extends Properties("Stringable") {
   property("localTime") = testStringable(implicitly[Stringable[LocalTime]])
   property("localDateTime") = testStringable(implicitly[Stringable[LocalDateTime]])
   property("zonedDateTime with an offset") = testStringable(implicitly[Stringable[ZonedDateTime]])
+
+  property("oneOf") = {
+    // Scalacheck's Arbitrary for Java enums doesn't link on Scala.js
+    implicit val arbDayOfWeek: Arbitrary[DayOfWeek] = Arbitrary(Gen.oneOf(DayOfWeek.values().toSeq))
+    testStringable(Stringable.oneOf(DayOfWeek.values())(_.name))
+  }
+  property("oneOf parses only the names") = Stringable.oneOf(List(1, 2))(_.toString).parse("3") ?= None
+  property("oneOf rejects values with the same name") =
+    Prop(scala.util.Try(Stringable.oneOf(List(1, 11))(_.toString.take(1))).isFailure)
 }

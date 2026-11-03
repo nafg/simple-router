@@ -53,6 +53,22 @@ object Stringable {
     */
   def attemptFromToString[A](parse: String => A) = attempt(parse)(_.toString)
 
+  /** A `Stringable` for a type with a fixed set of values, such as an enumeration, that formats a value as its `name`
+    * and parses only the names of `values`
+    *
+    * @example
+    *   {{{implicit val dayOfWeek: Stringable[DayOfWeek] = Stringable.oneOf(DayOfWeek.values())(_.name)}}}
+    * @throws java.lang.IllegalArgumentException
+    *   if two different values have the same name
+    */
+  def oneOf[A](values: Iterable[A])(name: A => String): Stringable[A] = {
+    val valuesByName = values.toSeq.distinct.groupBy(name)
+    val sharedNames  = valuesByName.collect { case (n, as) if as.size > 1 => n }
+    require(sharedNames.isEmpty, s"More than one value is named ${sharedNames.mkString(", ")}")
+    val byName       = valuesByName.map { case (n, as) => n -> as.head }
+    apply(byName.get)(name)
+  }
+
   implicit val string: Stringable[String]       = apply(Some(_))(identity)
   implicit val long: Stringable[Long]           = attemptFromToString(_.toLong)
   implicit val int: Stringable[Int]             = attemptFromToString(_.toInt)
