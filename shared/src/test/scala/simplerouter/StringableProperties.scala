@@ -55,4 +55,11 @@ object StringableProperties extends Properties("Stringable") {
   property("oneOf parses only the names") = Stringable.oneOf(List(1, 2))(_.toString).parse("3") ?= None
   property("oneOf rejects values with the same name") =
     Prop(scala.util.Try(Stringable.oneOf(List(1, 11))(_.toString.take(1))).isFailure)
+
+  property("base64Url") = testStringable(Stringable.base64Url.xmap(_.toList)(_.toArray))
+  property("base64Url uses only unreserved URL characters") = forAll { (bytes: Array[Byte]) =>
+    val s = Stringable.base64Url.format(bytes)
+    s.forall(c => c.isLetterOrDigit && c < 128 || c == '-' || c == '_') :| s
+  }
+  property("base64Url doesn't parse other text") = Stringable.base64Url.parse("a+b/") ?= None
 }
