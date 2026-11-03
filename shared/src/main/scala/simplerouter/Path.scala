@@ -26,9 +26,9 @@ sealed trait Path[A] {
   /** The [[Location]] this path describes for `param` */
   final def build(param: A): Location = encode(param)(Location(Nil))
 
-  /** The value `location` holds, if it matches this path. `location` is [[Location.normalized normalized]] first, so a
-    * path matches the URLs it builds whichever form of the path the caller has. It matches only if this path accounts
-    * for every one of its path segments; query parameters this path does not declare are ignored.
+  /** The value `location` holds, if it matches this path. The path is matched against `location`'s
+    * [[Location.normalized normalized]] form, and only if it accounts for every one of its path segments; query
+    * parameters this path does not declare are ignored.
     */
   final def parse: Location => Option[A] = loc => parseAsIs(loc.normalized)
 
