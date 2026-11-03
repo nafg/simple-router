@@ -26,6 +26,9 @@ mergifyExtraConditions := Seq(
     (Attr.Author :== "nafg-scala-steward[bot]")
 )
 
+// Stringable's instances refer to java.time, which Scala.js provides only with this library
+lazy val jsJavaTimeForTests = libraryDependencies += "io.github.cquiroz" %% "scala-java-time" % "2.8.0" % Test
+
 lazy val core =
   crossProject(JVMPlatform, JSPlatform).crossType(CrossType.Full)
     .in(file("."))
@@ -38,10 +41,8 @@ lazy val core =
         )
     )
     .jsSettings(
-      libraryDependencies ++= Seq(
-        "io.github.cquiroz" %% "scala-java-time" % "2.8.0" % Test,
-        "org.scala-js"      %% "scalajs-dom"     % "2.8.1" % Test
-      )
+      jsJavaTimeForTests,
+      libraryDependencies += "org.scala-js" %% "scalajs-dom" % "2.8.1" % Test
     )
 
 lazy val laws =
@@ -52,4 +53,22 @@ lazy val laws =
       name                                    := "laws",
       libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.20.0"
     )
-    .jsSettings(libraryDependencies += "io.github.cquiroz" %% "scala-java-time" % "2.8.0" % Test)
+    .jsSettings(jsJavaTimeForTests)
+
+lazy val derivation =
+  crossProject(JVMPlatform, JSPlatform).crossType(CrossType.Pure)
+    .in(file("derivation"))
+    .dependsOn(core, laws % Test)
+    .settings(
+      name := "derivation",
+      libraryDependencies ++=
+        (CrossVersion.partialVersion(scalaVersion.value) match {
+          case Some((2, _)) =>
+            Seq(
+              "com.softwaremill.magnolia1_2" %% "magnolia"      % "1.1.14",
+              "org.scala-lang"                % "scala-reflect" % scalaVersion.value % Provided
+            )
+          case _            => Seq("com.softwaremill.magnolia1_3" %% "magnolia" % "1.3.24")
+        })
+    )
+    .jsSettings(jsJavaTimeForTests)
