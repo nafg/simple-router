@@ -3,6 +3,7 @@ package simplerouter
 import java.time.{Duration, Instant, LocalDate, LocalDateTime, LocalTime, ZonedDateTime}
 import java.util.{Base64, UUID}
 
+import scala.annotation.tailrec
 import scala.util.Try
 
 /** A typeclass for converting values to and from strings.
@@ -77,6 +78,51 @@ object Stringable {
     */
   val base64Url: Stringable[Array[Byte]] =
     attempt(Base64.getUrlDecoder.decode(_: String))(Base64.getUrlEncoder.withoutPadding.encodeToString)
+
+  private final val ListEscape = '~'
+
+  /** A list as one text: its elements as `A` formats them, separated by `separator`. Within an element, `~` and
+    * `separator` are escaped by a preceding `~`. The empty list is the empty string, and a list of one empty element is
+    * `~`. A text parses only if each of its elements does.
+    *
+    * In a query string, [[Param.repeatable]] can hold a list with no escaping, as one parameter per element.
+    *
+    * @param separator
+    *   the character between elements; it may not be `~`
+    * @example
+    *   {{{implicit val ids: Stringable[List[Int]] = Stringable.separatedList[Int]()   // e.g. 1,2,3}}}
+    * @throws java.lang.IllegalArgumentException
+    *   if `separator` is `~`
+    */
+  def separatedList[A](separator: Char = ',')(implicit A: Stringable[A]): Stringable[List[A]] = {
+    require(separator != ListEscape, s"The separator may not be $ListEscape")
+
+    def escape(element: String) =
+      element.flatMap(c => if (c == ListEscape || c == separator) s"$ListEscape$c" else c.toString)
+
+    @tailrec
+    def split(rest: List[Char], element: StringBuilder, elements: List[String]): Option[List[String]] = rest match {
+      case Nil                                                          => Some((element.result() :: elements).reverse)
+      case ListEscape :: c :: tail if c == ListEscape || c == separator => split(tail, element += c, elements)
+      case ListEscape :: _                                              => None
+      case c :: tail if c == separator => split(tail, new StringBuilder, element.result() :: elements)
+      case c :: tail                   => split(tail, element += c, elements)
+    }
+
+    def parseAll(elements: List[String]) =
+      elements.foldRight(Option(List.empty[A]))((element, as) => A.parse(element).flatMap(a => as.map(a :: _)))
+
+    val oneEmptyElement = ListEscape.toString
+
+    apply {
+      case ""                => Some(Nil)
+      case `oneEmptyElement` => parseAll(List(""))
+      case s                 => split(s.toList, new StringBuilder, Nil).flatMap(parseAll)
+    } {
+      case List(a) if A.format(a).isEmpty => oneEmptyElement
+      case as                             => as.map(a => escape(A.format(a))).mkString(separator.toString)
+    }
+  }
 
   implicit val string: Stringable[String]       = apply(Some(_))(identity)
   implicit val long: Stringable[Long]           = attemptFromToString(_.toLong)

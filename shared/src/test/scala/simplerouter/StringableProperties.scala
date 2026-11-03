@@ -62,4 +62,29 @@ object StringableProperties extends Properties("Stringable") {
     s.forall(c => c.isLetterOrDigit && c < 128 || c == '-' || c == '_') :| s
   }
   property("base64Url doesn't parse other text") = Stringable.base64Url.parse("a+b/") ?= None
+
+  // Strings made mostly of the characters that need escaping
+  private val genEscapable     = Gen.listOf(Gen.stringOf(Gen.oneOf('a', ',', ':', '~')))
+  private val separatedStrings = Stringable.separatedList[String]()
+
+  property("separatedList") = {
+    implicit val arbEscapable: Arbitrary[List[String]] = Arbitrary(genEscapable)
+    testStringable(separatedStrings)
+  }
+  property("separatedList of Int") = testStringable(Stringable.separatedList[Int]())
+  property("separatedList in separatedList") = {
+    implicit val inner: Stringable[List[String]]          = Stringable.separatedList[String](':')
+    implicit val arbNested: Arbitrary[List[List[String]]] = Arbitrary(Gen.listOf(genEscapable))
+    testStringable(Stringable.separatedList[List[String]]())
+  }
+  property("separatedList escapes") = separatedStrings.format(List("a,b", "c~", "")) ?= "a~,b,c~~,"
+  property("separatedList of nothing") =
+    (separatedStrings.format(Nil) ?= "") && (separatedStrings.parse("") ?= Some(Nil))
+  property("separatedList of one empty element") =
+    (separatedStrings.format(List("")) ?= "~") && (separatedStrings.parse("~") ?= Some(List("")))
+  property("separatedList doesn't parse an unknown escape") = separatedStrings.parse("a~b") ?= None
+  property("separatedList doesn't parse an element that doesn't parse") =
+    Stringable.separatedList[Int]().parse("1,x") ?= None
+  property("separatedList rejects ~ as a separator") =
+    Prop(scala.util.Try(Stringable.separatedList[String]('~')).isFailure)
 }
