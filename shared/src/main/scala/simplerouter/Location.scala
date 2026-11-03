@@ -36,8 +36,8 @@ case class Location(path: List[String], query: List[(String, String)] = Nil) {
   }
 
   /** This `Location` with its path resolved the way a browser resolves it before sending a request: `.` and `..`
-    * segments are resolved (`..` above the root stays at the root), and leading empty segments are dropped, so the
-    * root is `Nil`. Two `Location`s refer to the same resource when their normalized forms are equal.
+    * segments are resolved (`..` above the root stays at the root), and leading empty segments are dropped, so the root
+    * is `Nil`. Two `Location`s refer to the same resource when their normalized forms are equal.
     */
   def normalized: Location =
     if (path.headOption.contains("") || path.exists(s => s == "." || s == "..")) copy(path = Location.normalize(path))
@@ -82,5 +82,7 @@ object Location {
   private val HexDigits = "0123456789ABCDEF"
 
   private def isLeftAsIs(c: Char) =
-    (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || "-_.!~*'()".indexOf(c.toInt) >= 0
+    (c >= 'a' && c <= 'z') ||
+      (c >= 'A' && c <= 'Z') ||
+      (c >= '0' && c <= '9') || "-_.!~*'()".indexOf(c.toInt) >= 0
 }
