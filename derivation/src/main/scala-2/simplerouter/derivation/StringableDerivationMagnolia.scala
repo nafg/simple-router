@@ -10,11 +10,13 @@ private[derivation] trait StringableDerivationMagnolia {
 
   def join[T](caseClass: CaseClass[Stringable, T]): Stringable[T] =
     Encoding.product(
-      caseClass.parameters.map(p => Encoding.Field[T](t => p.typeclass.format(p.dereference(t)), p.typeclass.parse))
+      caseClass.parameters.map(p =>
+        Encoding.Field[T](t => p.typeclass.format(p.dereference(t)), text => p.typeclass.parse(text))
+      )
     )(caseClass.rawConstruct)
 
   def split[T](sealedTrait: SealedTrait[Stringable, T]): Stringable[T] =
-    Encoding.sum(sealedTrait.subtypes.map(s => Encoding.Subtype[T](s.typeName.short, s.typeclass.parse))) {
+    Encoding.sum(sealedTrait.subtypes.map(s => Encoding.Subtype[T](s.typeName.short, text => s.typeclass.parse(text)))) {
       value => sealedTrait.split(value)(s => (s.typeName.short, s.typeclass.format(s.cast(value))))
     }
 

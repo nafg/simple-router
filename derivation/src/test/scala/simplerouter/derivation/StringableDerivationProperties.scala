@@ -23,11 +23,18 @@ object StringableDerivationProperties extends Properties("StringableDerivation")
   object First  { case object Name extends SameNames }
   object Second { case object Name extends SameNames }
 
+  sealed trait Chain
+  object Chain {
+    case object End              extends Chain
+    case class Link(next: Chain) extends Chain
+  }
+
   implicit val emptyStringable: Stringable[Empty]     = StringableDerivation.derived[Empty]
   implicit val wrapperStringable: Stringable[Wrapper] = StringableDerivation.derived[Wrapper]
   implicit val pairStringable: Stringable[Pair]       = StringableDerivation.derived[Pair]
   implicit val nestedStringable: Stringable[Nested]   = StringableDerivation.derived[Nested]
   implicit val targetStringable: Stringable[Target]   = StringableDerivation.derived[Target]
+  implicit val chainStringable: Stringable[Chain]     = StringableDerivation.derived[Chain]
 
   /** Weighted toward the characters the format treats specially */
   private val text = Gen.listOf(Gen.frequency(1 -> Gen.oneOf(',', '~'), 2 -> Gen.alphaNumChar)).map(_.mkString)
@@ -67,4 +74,8 @@ object StringableDerivationProperties extends Properties("StringableDerivation")
 
   property("subtypes with the same name are rejected") =
     Prop.throws(classOf[IllegalArgumentException])(StringableDerivation.derived[SameNames])
+
+  property("a recursive sealed trait") =
+    (chainStringable.format(Chain.Link(Chain.Link(Chain.End))) ?= "Link,Link,End") &&
+      (chainStringable.parse("Link,Link,End") ?= Some(Chain.Link(Chain.Link(Chain.End))))
 }
