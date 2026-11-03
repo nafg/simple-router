@@ -68,7 +68,8 @@ object Location {
   /** The [[Location]] of a path, optionally followed by `?` and a query string and by `#` and a fragment, as in an HTTP
     * request target. The path is split on `/` and each segment is decoded as [[parseQuery]] decodes a key, except that
     * `+` stays `+`. The query string is parsed with [[parseQuery]], and the fragment is ignored. The result is
-    * [[Location.normalized normalized]], so `parsePathAndQuery(loc.toUrl) == loc.normalized` for every `loc`.
+    * [[Location.normalized normalized]], so `parsePathAndQuery(loc.toUrl) == loc.normalized` for every `loc` whose
+    * strings have no unpaired surrogates.
     */
   def parsePathAndQuery(raw: String): Location = {
     val (path, query) = raw.takeWhile(_ != '#').span(_ != '?')
@@ -80,7 +81,8 @@ object Location {
     * parameters are skipped. The first `=` in a parameter separates the key from the value, which is `""` if there is
     * no `=`. In keys and values, `+` is a space, `%` followed by two hex digits is the byte they encode, and the bytes
     * are decoded as UTF-8. A `%` that isn't followed by two hex digits stays `%`, and each maximal invalid UTF-8
-    * sequence becomes one U+FFFD, as the WHATWG Encoding standard specifies.
+    * sequence becomes one U+FFFD, as the WHATWG Encoding standard specifies. An unpaired surrogate in `raw` becomes
+    * U+FFFD too.
     */
   def parseQuery(raw: String): List[(String, String)] =
     raw.stripPrefix("?").split("&", -1).toList.filter(_.nonEmpty).map { param =>
@@ -88,7 +90,8 @@ object Location {
       percentDecode(key, plusIsSpace = true) -> percentDecode(value.drop(1), plusIsSpace = true)
     }
 
-  private def percentDecode(s: String, plusIsSpace: Boolean): String =
+  private def percentDecode(raw: String, plusIsSpace: Boolean): String = {
+    val s = replaceUnpairedSurrogates(raw)
     if (s.indexOf('%') < 0 && !(plusIsSpace && s.indexOf('+') >= 0)) s
     else {
       // UTF-8 encodes non-ASCII characters with non-ASCII bytes only, so the ASCII `%`, hex digits and `+` can be
@@ -107,6 +110,28 @@ object Location {
         }
       }
       decodeUtf8(out.toByteArray)
+    }
+  }
+
+  /** `s` with each unpaired surrogate replaced by U+FFFD, as the WHATWG URL standard converts a string to Unicode
+    * scalar values
+    */
+  private def replaceUnpairedSurrogates(s: String): String =
+    if (!s.exists(Character.isSurrogate)) s
+    else {
+      val sb = new java.lang.StringBuilder(s.length)
+      var i  = 0
+      while (i < s.length) {
+        val c = s.charAt(i)
+        if (Character.isHighSurrogate(c) && i + 1 < s.length && Character.isLowSurrogate(s.charAt(i + 1))) {
+          sb.append(c).append(s.charAt(i + 1))
+          i += 2
+        } else {
+          sb.append(if (Character.isSurrogate(c)) '\ufffd' else c)
+          i += 1
+        }
+      }
+      sb.toString
     }
 
   /** Decodes `bytes` with the WHATWG Encoding standard's UTF-8 decoder, which replaces each maximal invalid subsequence

@@ -79,6 +79,12 @@ class LocationTests extends AnyFunSuite with Matchers {
     Location.parseQuery("a=%E4%B8%F7%93") should equal(List("a" -> "\ufffd\ufffd\ufffd"))
   }
 
+  test("parseQuery and parsePathAndQuery replace unpaired surrogates with U+FFFD") {
+    Location.parseQuery("a=\ud800&b=\udc00+&c=\ud83d\ude00%41") should
+      equal(List("a" -> "\ufffd", "b" -> "\ufffd ", "c" -> "\ud83d\ude00A"))
+    Location.parsePathAndQuery("/\ud800/\udc00%41") should equal(Location(List("\ufffd", "\ufffdA")))
+  }
+
   test("Path(\"\") does not compile") {
     assertCompiles("""Path("a")""")
     assertDoesNotCompile("""Path("")""")
