@@ -1,7 +1,7 @@
 package simplerouter
 
 import java.time.{Duration, Instant, LocalDate, LocalDateTime, LocalTime, ZonedDateTime}
-import java.util.UUID
+import java.util.{Base64, UUID}
 
 import scala.util.Try
 
@@ -68,6 +68,15 @@ object Stringable {
     val byName       = valuesByName.map { case (n, as) => n -> as.head }
     apply(byName.get)(name)
   }
+
+  /** Bytes as base64url (RFC 4648 section 5), whose characters need no escaping in a URL. Formats without padding, and
+    * parses with or without it.
+    *
+    * @example
+    *   {{{implicit val filter: Stringable[Filter] = Stringable.base64Url.xmapPartial(Filter.decode)(Filter.encode)}}}
+    */
+  val base64Url: Stringable[Array[Byte]] =
+    attempt(Base64.getUrlDecoder.decode(_: String))(Base64.getUrlEncoder.withoutPadding.encodeToString)
 
   implicit val string: Stringable[String]       = apply(Some(_))(identity)
   implicit val long: Stringable[Long]           = attemptFromToString(_.toLong)
