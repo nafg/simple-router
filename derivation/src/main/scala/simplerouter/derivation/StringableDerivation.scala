@@ -12,8 +12,10 @@ package simplerouter.derivation
   * by putting `~` before each `,` and `~` in it. So a case class with one field is written as that field, and a case
   * object, or a case class with no fields, as the empty text.
   *
-  * An `Option` field whose type has no `Stringable` of its own is written, for `None`, as the empty text, and for
-  * `Some(a)`, as the text of `a`, with `~` put before it if that text is empty or starts with `~`.
+  * An `Option` field is written, for `None`, as the empty text, and for `Some(a)`, as the text of `a`, with `~` put
+  * before it if that text is empty or starts with `~`. But a `Stringable` for the field's `Option` type, if an implicit
+  * search where `derived` is called finds one, takes priority. So one derived type can have `Option` fields written
+  * both ways: those of `Option` types with a `Stringable` of their own, and the rest.
   *
   * A sealed trait is written as the simple name of the value's subtype, escaped the same way, followed by `,` and the
   * text of the value as that subtype, unless that text is empty. The subtypes must have distinct simple names:
