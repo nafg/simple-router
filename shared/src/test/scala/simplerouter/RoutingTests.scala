@@ -102,6 +102,12 @@ class RoutingTests extends AnyFunSuite with Matchers with Inside {
     even.parse(Location("n" :: "2" :: Nil)) should equal(Some(2))
     even.parse(Location("n" :: "3" :: Nil)) should equal(None)
     even.build(4) should equal(Location("n" :: "4" :: Nil))
+    even.build(3) should equal(Location("n" :: "3" :: Nil))
+  }
+
+  test("A mapped path after a literal keeps an empty segment") {
+    val mapped = "a" :/: (Param[String] :/: "b").xmap(identity)(identity)
+    mapped.parse(Location("a" :: "" :: "b" :: Nil)) should equal(Some("" ->: ()))
   }
 
   test("Sites") {
