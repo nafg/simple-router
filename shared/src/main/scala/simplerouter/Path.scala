@@ -30,7 +30,10 @@ sealed trait Path[A] {
     * [[Location.normalized normalized]] form, and only if it accounts for every one of its path segments; query
     * parameters this path does not declare are ignored.
     */
-  final def parse: Location => Option[A] = loc => parseAsIs(loc.normalized)
+  final def parse: Location => Option[A] = loc => parseNormalized(loc.normalized)
+
+  /** [[parse]] for a `location` that is already [[Location.normalized normalized]] */
+  protected[simplerouter] final def parseNormalized(location: Location): Option[A] = parseAsIs(location)
 
   /** A function that [[parse parses]] a [[Location]] and passes its value to `handler`. It returns `None` if the
     * location does not match or `handler` returns `None`.
