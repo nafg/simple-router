@@ -49,7 +49,8 @@ case class Route[A, +R](path: Path[A], handler: A => Option[R]) extends Routes[R
 
 /** [[Routes]] that try each of `routes` in order */
 case class RouteSeq[+A](routes: Seq[Routes[A]]) extends Routes[A] {
-  override def run: PartialFunction[Location, A] = routes
+  // Lazy, so that the intermediate RouteSeqs a chain of `&` creates don't each build one
+  override lazy val run: PartialFunction[Location, A] = routes
     .foldLeft(PartialFunction.empty[Location, A])(_ orElse _.run)
 
   override def map[B](f: A => B): RouteSeq[B] = RouteSeq(routes.map(_.map(f)))
