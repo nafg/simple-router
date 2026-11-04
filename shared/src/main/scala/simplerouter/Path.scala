@@ -150,12 +150,13 @@ object Path extends PathCompanionImplicits {
     }
 
     /** A query parameter that may occur any number of times, followed by `next`. Its part of the value is the list of
-      * the values of every occurrence of `params.key`, in order, each converted by `params`'s [[Stringable]].
-      * Occurrences that `params` cannot parse are left out of the list; they do not stop the location from matching.
+      * the values of every occurrence of `params.key`, in order, each converted by `params`'s [[Stringable]]. An
+      * occurrence that `params` cannot parse is left out of the list, or, if `params` is
+      * [[Param.QueryParamRep.strict strict]], stops the location from matching.
       */
     case class Repeated[A, B](params: Param.QueryParamRep[A], next: Path[B]) extends QueryParameter[List[A] -> B] {
       private val locParams = new Extractor((loc: Location) => Some(loc.takeParams(params.key)))
-      private val parseAll  = new Extractor((xs: List[String]) => Some(xs.flatMap(params.stringable.parse(_))))
+      private val parseAll  = new Extractor(params.parseAll)
 
       override protected[simplerouter] def encode = { case as -> b =>
         loc =>

@@ -25,9 +25,23 @@ object Param {
   }
 
   /** A query parameter named `key` that may occur any number of times, each occurrence holding a value of type `A`.
-    * Create one with [[Param.repeatable]].
+    * Create one with [[Param.repeatable]] or [[Param.repeatableStrict]].
+    *
+    * @param strict
+    *   whether an occurrence that `stringable` cannot parse stops a location from matching. If not, it is ignored.
     */
-  case class QueryParamRep[A](key: String)(implicit val stringable: Stringable[A])
+  case class QueryParamRep[A](key: String, strict: Boolean = false)(implicit val stringable: Stringable[A]) {
+
+    /** The values `texts` hold, in order. A text that does not parse is left out, or, if this is strict, makes the
+      * result `None`.
+      */
+    private[simplerouter] def parseAll(texts: List[String]): Option[List[A]] =
+      if (!strict) Some(texts.flatMap(stringable.parse(_)))
+      else {
+        val parsed = texts.map(stringable.parse(_))
+        if (parsed.forall(_.isDefined)) Some(parsed.flatten) else None
+      }
+  }
   object QueryParamRep extends ImplicitsForTuple2Path[List]
       with ImplicitsForToQueryParameter[λ[a => (List[a], Unit)]] {
     override protected type From[A] = QueryParamRep[A]
@@ -61,4 +75,14 @@ object Param {
     *   {{{"main" :&: Param.repeatable[Int]("option")   // e.g. /main?option=10&option=20}}}
     */
   def repeatable[A: Stringable](key: String) = new QueryParamRep[A](key)
+
+  /** Declares a query parameter that may occur any number of times, as [[repeatable]] does, except that a location with
+    * an occurrence that does not parse does not match. [[repeatable]] leaves such an occurrence out of the list.
+    *
+    * @param key
+    *   the query parameter's name
+    * @example
+    *   {{{"main" :&: Param.repeatableStrict[Int]("option")   // /main?option=10&option=x does not match}}}
+    */
+  def repeatableStrict[A: Stringable](key: String) = new QueryParamRep[A](key, strict = true)
 }

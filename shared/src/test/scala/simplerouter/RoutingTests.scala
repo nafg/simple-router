@@ -78,6 +78,13 @@ class RoutingTests extends AnyFunSuite with Matchers with Inside {
     ("a" :/: Param[String] :/: "b").parse(Location("a" :: "" :: "b" :: Nil)) should equal(Some("" ->: ()))
   }
 
+  test("A strict repeatable query parameter doesn't match a location with an occurrence that doesn't parse") {
+    val strict = "test" :&: Param.repeatableStrict[Int]("n")
+    strict.parse(Location("test" :: Nil, List("n" -> "1", "n" -> "2"))) should equal(Some(List(1, 2) ->: ()))
+    strict.parse(Location("test" :: Nil, List("n" -> "1", "n" -> "a"))) should equal(None)
+    strict.parse(Location("test" :: Nil)) should equal(Some(Nil ->: ()))
+  }
+
   test("Sites") {
     val s = r & r2 & r3
 
