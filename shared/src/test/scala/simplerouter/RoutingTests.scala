@@ -110,6 +110,45 @@ class RoutingTests extends AnyFunSuite with Matchers with Inside {
     mapped.parse(Location("a" :: "" :: "b" :: Nil)) should equal(Some("" ->: ()))
   }
 
+  test("++ concatenates paths and their values") {
+    val userPosts = ("users" :/: Param[Long]) ++ ("posts" :&: Param[Int]("page"))
+    implicitly[userPosts.type <:< Path[Long ->: Option[Int] ->: Unit]]
+
+    val loc = userPosts.construct(42L, Some(2))
+    loc should equal(Location("users" :: "42" :: "posts" :: Nil, List("page" -> "2")))
+    userPosts.parse(loc) should equal(Some(42L ->: Some(2) ->: ()))
+    (userPosts >> { id => page => (id, page) }).run(loc) should equal((42L, Some(2)))
+    userPosts.parse(Location("users" :: "42" :: Nil)) should equal(None)
+  }
+
+  test("A TupleConcat matches a concatenated value as its two parts") {
+    val prefix = "users" :/: Param[Long]
+    val tail   = "posts" :&: Param[Int]("page")
+    val concat = implicitly[TupleConcat[Long ->: Unit, Option[Int] ->: Unit, Long ->: Option[Int] ->: Unit]]
+    val route  = (prefix ++ tail) >>* { case concat(id ->: (), page ->: ()) => (id, page) }
+    route.run(Location("users" :: "42" :: "posts" :: Nil, List("page" -> "2"))) should equal((42L, Some(2)))
+  }
+
+  test("++ can add a tail whose value isn't a tuple") {
+    case class Page(number: Option[Int], tags: List[String])
+    val page  = (Param[Int]("page") :&: Param.repeatable[String]("tag"))
+      .xmap { case n ->: tags ->: () => Page(n, tags) }(p => p.number ->: p.tags ->: ())
+    val posts = ("users" :/: Param[Long] :/: "posts" :/: Param[String]) ++ page
+    implicitly[posts.type <:< Path[Long ->: String ->: Page]]
+
+    val value = 42L ->: "new" ->: Page(Some(2), List("a"))
+    val loc   = posts.build(value)
+    loc should equal(Location("users" :: "42" :: "posts" :: "new" :: Nil, List("tag" -> "a", "page" -> "2")))
+    posts.parse(loc) should equal(Some(value))
+  }
+
+  test("++ after ** adds query parameters") {
+    val files = ("files" :/: **) ++ (Param[Int]("page") :&: Path.root)
+    val loc   = files.construct(List("a", "b"), Some(3))
+    loc should equal(Location("files" :: "a" :: "b" :: Nil, List("page" -> "3")))
+    files.parse(loc) should equal(Some(List("a", "b") ->: Some(3) ->: ()))
+  }
+
   test("Sites") {
     val s = r & r2 & r3
 

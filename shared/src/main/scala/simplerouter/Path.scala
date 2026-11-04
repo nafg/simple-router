@@ -20,8 +20,13 @@ private class Extractor[-A, +B](f: A => Option[B]) {
 sealed trait Path[A] {
   protected[simplerouter] def encode: A => Location => Location
 
-  /** [[parse]] without normalizing: the value `location` holds, as it is, if it matches this path */
-  protected[simplerouter] def parseAsIs: Location => Option[A]
+  /** Matches this path against the start of `location`'s path, as it is (not normalized), and takes the query
+    * parameters this path declares from `location`'s query. The result is this path's value and what is left of
+    * `location`: the path segments after the ones matched, and the query parameters not taken. It is `None` if
+    * `location`'s path does not start with this path's segments, or if a value this path declares does not parse or
+    * convert.
+    */
+  protected[simplerouter] def parsePrefix: Location => Option[(A, Location)]
 
   /** The [[Location]] this path describes for `param` */
   final def build(param: A): Location = encode(param)(Location(Nil))
@@ -33,7 +38,8 @@ sealed trait Path[A] {
   final def parse: Location => Option[A] = loc => parseNormalized(loc.normalized)
 
   /** [[parse]] for a `location` that is already [[Location.normalized normalized]] */
-  protected[simplerouter] final def parseNormalized(location: Location): Option[A] = parseAsIs(location)
+  protected[simplerouter] final def parseNormalized(location: Location): Option[A] =
+    parsePrefix(location).collect { case (a, Location(Nil, _)) => a }
 
   /** A function that [[parse parses]] a [[Location]] and passes its value to `handler`. It returns `None` if the
     * location does not match or `handler` returns `None`.
@@ -60,6 +66,21 @@ sealed trait Path[A] {
     * match. Building does not consult `f`, and a `B` that is built parses back to itself only if `f(g(b)) == Some(b)`.
     */
   final def xmapPartial[B](f: A => Option[B])(g: B => A): Path[B] = Path.Mapped(this, f, g)
+
+  /** This path followed by `that`: its path segments are this path's, then `that`'s, and it has the query parameters of
+    * both. Its value is this path's, with `that`'s value in place of the `Unit` this path's value ends with.
+    *
+    * A path that ends with `**` takes all the remaining path segments, so if this path ends with it and `that` has path
+    * segments, the result matches no location. The two paths should not declare query parameters with the same key:
+    * this path takes the occurrences of its keys first, so a location built for a value need not parse back to it.
+    *
+    * @example
+    *   {{{
+    * ("users" :/: Param[Long]) ++ ("posts" :&: Param[Int]("page"))   // Path[Long ->: Option[Int] ->: Unit]
+    *   }}}
+    */
+  final def ++[B, C](that: Path[B])(implicit concat: TupleConcat[A, B, C]): Path[C] =
+    Path.Concatenated(this, that, concat)
 }
 
 object Path extends PathCompanionImplicits {
@@ -99,10 +120,7 @@ object Path extends PathCompanionImplicits {
     case object Empty extends Path.Segment[Unit] {
       override protected[simplerouter] def encode = _ => identity
 
-      override protected[simplerouter] def parseAsIs = {
-        case Location(Nil, _) => Some(())
-        case _                => None
-      }
+      override protected[simplerouter] def parsePrefix: Location => Option[(Unit, Location)] = loc => Some(((), loc))
     }
 
     /** Matches all the remaining path segments, which its part of the value holds as a `List[String]`. It ends a chain.
@@ -111,16 +129,16 @@ object Path extends PathCompanionImplicits {
     case object All extends Path.Segment[List[String] -> Unit] {
       override protected[simplerouter] def encode = param => _ ++ param._1
 
-      override protected[simplerouter] def parseAsIs: Location => Option[(List[String], Unit)] =
-        loc => Some(loc.path ->: ())
+      override protected[simplerouter] def parsePrefix: Location => Option[(List[String] -> Unit, Location)] =
+        loc => Some((loc.path ->: (), loc.copy(path = Nil)))
     }
 
     /** The fixed path segment `component`, followed by `next`. It adds nothing to the path's value. */
     case class Literal[A](component: String, next: Path[A]) extends Path.Segment[A] {
       override protected[simplerouter] def encode = param => l => next.encode(param)(l :+ component)
 
-      override protected[simplerouter] def parseAsIs: Location => Option[A] = {
-        case loc @ Location(`component` :: _, _) => next.parseAsIs(loc.tail)
+      override protected[simplerouter] def parsePrefix: Location => Option[(A, Location)] = {
+        case loc @ Location(`component` :: _, _) => next.parsePrefix(loc.tail)
         case _                                   => None
       }
     }
@@ -133,8 +151,9 @@ object Path extends PathCompanionImplicits {
         l => next.encode(b)(l :+ param.stringable.format(a))
       }
 
-      override protected[simplerouter] def parseAsIs: Location => Option[(A, B)] = {
-        case loc @ Location(param.stringable(a) :: _, _) => next.parseAsIs(loc.tail).map(a -> _)
+      override protected[simplerouter] def parsePrefix: Location => Option[(A -> B, Location)] = {
+        case loc @ Location(param.stringable(a) :: _, _) =>
+          next.parsePrefix(loc.tail).map { case (b, rest) => (a -> b, rest) }
         case _                                           => None
       }
     }
@@ -161,11 +180,13 @@ object Path extends PathCompanionImplicits {
           next.encode(b)(loc2)
       }
 
-      override protected[simplerouter] def parseAsIs: Location => Option[(Option[A], B)] = {
-        case locParam(param.stringable(a), loc2) => next.parseAsIs(loc2).map(Some(a) -> _)
-        case loc                                 => next.parseAsIs(loc).flatMap {
-            case b if loc.query.forall(_._1 != param.key) => Some(None -> b)
-            case _                                        => None
+      override protected[simplerouter] def parsePrefix: Location => Option[(Option[A] -> B, Location)] = {
+        case locParam(param.stringable(a), loc2) => next.parsePrefix(loc2).map { case (b, rest) =>
+            (Some(a) -> b, rest)
+          }
+        case loc                                 => next.parsePrefix(loc).flatMap {
+            case (b, rest) if loc.query.forall(_._1 != param.key) => Some((None -> b, rest))
+            case _                                                => None
           }
       }
     }
@@ -185,8 +206,8 @@ object Path extends PathCompanionImplicits {
           next.encode(b)(location)
       }
 
-      override protected[simplerouter] def parseAsIs: Location => Option[(List[A], B)] = {
-        case locParams(parseAll(as), loc2) => next.parseAsIs(loc2).map(as -> _)
+      override protected[simplerouter] def parsePrefix: Location => Option[(List[A] -> B, Location)] = {
+        case locParams(parseAll(as), loc2) => next.parsePrefix(loc2).map { case (b, rest) => (as -> b, rest) }
         case _                             => None
       }
     }
@@ -201,6 +222,20 @@ object Path extends PathCompanionImplicits {
   case class Mapped[A, B](path: Path[A], f: A => Option[B], g: B => A) extends Path[B] {
     override protected[simplerouter] def encode = b => path.encode(g(b))
 
-    override protected[simplerouter] def parseAsIs: Location => Option[B] = path.parseAsIs(_).flatMap(f)
+    override protected[simplerouter] def parsePrefix: Location => Option[(B, Location)] =
+      path.parsePrefix(_).flatMap { case (a, rest) => f(a).map(_ -> rest) }
+  }
+
+  /** `first` followed by `second`, as [[Path.++]] makes it */
+  case class Concatenated[A, B, C](first: Path[A], second: Path[B], concat: TupleConcat[A, B, C]) extends Path[C] {
+    override protected[simplerouter] def encode = c => {
+      val (a, b) = concat.split(c)
+      first.encode(a).andThen(second.encode(b))
+    }
+
+    override protected[simplerouter] def parsePrefix: Location => Option[(C, Location)] =
+      first.parsePrefix(_).flatMap { case (a, rest) =>
+        second.parsePrefix(rest).map { case (b, rest2) => (concat.join(a, b), rest2) }
+      }
   }
 }
