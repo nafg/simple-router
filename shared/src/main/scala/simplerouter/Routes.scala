@@ -19,8 +19,8 @@ trait Routes[+A] {
     * for a location no route matches.
     */
   final def run: PartialFunction[Location, A] = {
-    val matchNormalized = runNormalized
-    Function.unlift(loc => matchNormalized.lift(loc.normalized))
+    val matchNormalized = runNormalized.lift
+    Function.unlift(loc => matchNormalized(loc.normalized))
   }
 
   /** [[run]] for a location that is already [[Location.normalized normalized]] */
