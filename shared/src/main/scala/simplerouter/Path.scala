@@ -22,7 +22,9 @@ sealed trait Path[A] {
 
   /** Matches this path against the start of `location`'s path, as it is (not normalized), and takes the query
     * parameters this path declares from `location`'s query. The result is this path's value and what is left of
-    * `location`, or `None` if the start of `location` does not match.
+    * `location`: the path segments after the ones matched, and the query parameters not taken. It is `None` if
+    * `location`'s path does not start with this path's segments, or if a value this path declares does not parse or
+    * convert.
     */
   protected[simplerouter] def parsePrefix: Location => Option[(A, Location)]
 
