@@ -3,7 +3,7 @@ package simplerouter
 import org.scalatest.Inside
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
-import simplerouter.syntax.{**, Any_->:, PathSegmentSyntax}
+import simplerouter.syntax.{**, ->:, Any_->:, PathSegmentSyntax}
 
 class RoutingTests extends AnyFunSuite with Matchers with Inside {
   val p  = "add" :/: Param[Int] :/: "plus" :/: Param[Int] :/: "please"
@@ -83,6 +83,31 @@ class RoutingTests extends AnyFunSuite with Matchers with Inside {
     strict.parse(Location("test" :: Nil, List("n" -> "1", "n" -> "2"))) should equal(Some(List(1, 2) ->: ()))
     strict.parse(Location("test" :: Nil, List("n" -> "1", "n" -> "a"))) should equal(None)
     strict.parse(Location("test" :: Nil)) should equal(Some(Nil ->: ()))
+  }
+
+  test("xmap converts a path's value both ways") {
+    case class Page(number: Option[Int], tags: List[String])
+    val page = (Param[Int]("page") :&: Param.repeatable[String]("tag"))
+      .xmap { case n ->: tags ->: () => Page(n, tags) }(p => p.number ->: p.tags ->: ())
+    val list = "list" :/: page
+
+    val loc = list.build(Page(Some(2), List("a", "b")))
+    loc should equal(Location("list" :: Nil, List("tag" -> "a", "tag" -> "b", "page" -> "2")))
+    list.parse(loc) should equal(Some(Page(Some(2), List("a", "b"))))
+    (list >>* (_.number)).run(loc) should equal(Some(2))
+  }
+
+  test("xmapPartial doesn't match a location whose value it maps to None") {
+    val even = ("n" :/: Param[Int]).xmapPartial { case n ->: () => Some(n).filter(_ % 2 == 0) }(_ ->: ())
+    even.parse(Location("n" :: "2" :: Nil)) should equal(Some(2))
+    even.parse(Location("n" :: "3" :: Nil)) should equal(None)
+    even.build(4) should equal(Location("n" :: "4" :: Nil))
+    even.build(3) should equal(Location("n" :: "3" :: Nil))
+  }
+
+  test("A mapped path after a literal keeps an empty segment") {
+    val mapped = "a" :/: (Param[String] :/: "b").xmap(identity)(identity)
+    mapped.parse(Location("a" :: "" :: "b" :: Nil)) should equal(Some("" ->: ()))
   }
 
   test("Sites") {

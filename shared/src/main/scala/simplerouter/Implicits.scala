@@ -19,7 +19,7 @@ trait Implicits[In[_]] {
 /** Adds the operators that pair a path with a handler, making a [[Route]] */
 trait ImplicitsForToPath[In[_]] extends Implicits[In] {
 
-  /** Route operators whose handler receives the path's whole value, a tuple such as `Int ->: String ->: Unit` */
+  /** Route operators whose handler receives the path's whole value, such as the tuple `Int ->: String ->: Unit` */
   implicit class PathTupleHandlerSyntax[A](self: From[A]) {
     private def path = toPath(self)
 
