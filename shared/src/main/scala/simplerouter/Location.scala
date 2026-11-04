@@ -65,9 +65,10 @@ case class Location(path: List[String], query: List[(String, String)] = Nil) {
 
 object Location {
 
-  /** The [[Location]] of a path, optionally followed by `?` and a query string and by `#` and a fragment, as in an HTTP
-    * request target. The path is split on `/` and each segment is decoded as [[parseQuery]] decodes a key, except that
-    * `+` stays `+`. The query string is parsed with [[parseQuery]], and the fragment is ignored. The result is
+  /** The [[Location]] of a request target: a path, optionally followed by `?` and a query string and by `#` and a
+    * fragment. `raw` is not an absolute URL: in `https://example.com/a`, the scheme and host would be read as path
+    * segments. The path is split on `/` and each segment is decoded as [[parseQuery]] decodes a key, except that `+`
+    * stays `+`. The query string is parsed with [[parseQuery]], and the fragment is ignored. The result is
     * [[Location.normalized normalized]], so `parsePathAndQuery(loc.toUrl) == loc.normalized` for every `loc` whose
     * strings have no unpaired surrogates.
     */
@@ -75,7 +76,8 @@ object Location {
 
   /** `None` if the part of `raw` before any `#` has a `%` that isn't followed by two hex digits, an unpaired surrogate,
     * or a path segment, key or value whose decoded bytes aren't valid UTF-8; otherwise `Some` of what
-    * [[parsePathAndQuery]] returns for `raw`
+    * [[parsePathAndQuery]] returns for `raw`. Like [[parsePathAndQuery]], it takes a request target, not an absolute
+    * URL, whose scheme and host would be read as path segments.
     */
   def parsePathAndQueryStrict(raw: String): Option[Location] = decodePathAndQuery(raw).toOption
 
