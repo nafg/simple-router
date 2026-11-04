@@ -66,6 +66,17 @@ class RoutingTests extends AnyFunSuite with Matchers with Inside {
     r.run(Location("" :: "add" :: "10" :: "plus" :: "20" :: "please" :: Nil)) should equal(30)
   }
 
+  test("runOption gives the first matching route's value, or None") {
+    val s = r & ("add" :/: Param[Int] :/: "plus" :/: Param[Int] :/: "please" >> { a => b => a * b })
+    s.runOption(Location("add" :: "10" :: "plus" :: "20" :: "please" :: Nil)) should equal(Some(30))
+    s.runOption(Location("add" :: "10" :: "and" :: "20" :: "please" :: Nil)) should equal(None)
+  }
+
+  test("RouteSeq builds run once") {
+    val s = r & r2 & r3
+    s.run should be theSameInstanceAs s.run
+  }
+
   test("Sites") {
     val s = r & r2 & r3
 
