@@ -43,31 +43,36 @@ sealed trait Path[A] {
 
 object Path extends PathCompanionImplicits {
 
-  /** The path with no segments, which is the root, `/` */
+  /** The root, `/`: the path with no segments. It matches a [[Location]] whose [[Location.normalized normalized]] path
+    * has no segments.
+    */
+  val root = Segment.Empty
+
+  /** The path with no segments, the same as [[root]] */
   val empty = Segment.Empty
 
-  /** A path consisting of the single segment `literal`. The root is [[empty]].
+  /** A path consisting of the single segment `literal`. The root is [[root]].
     *
     * @throws java.lang.IllegalArgumentException
     *   if `literal` is empty. An empty string literal is rejected at compile time instead.
     */
   def apply(literal: String): Segment.Literal[Unit] = {
-    require(literal.nonEmpty, "Path(\"\") is not a path segment: use Path.empty for the root")
+    require(literal.nonEmpty, "Path(\"\") is not a path segment: use Path.root for the root")
     Segment.Literal(literal, empty)
   }
 
-  /** Never compiles: it makes `Path("")` a compile error. The root is [[empty]]. */
+  /** Never compiles: it makes `Path("")` a compile error. The root is [[root]]. */
   def apply(literal: "")(implicit noEmptyLiteral: NoEmptyLiteral): Nothing = ???
 
   /** Has no instances, so that writing an empty path literal fails to compile with this message */
-  @implicitNotFound("\"\" is not a path segment: use Path.empty for the root")
+  @implicitNotFound("\"\" is not a path segment: use Path.root for the root")
   sealed abstract class NoEmptyLiteral
 
   /** A [[Path]] that starts with a path segment, or ends the chain */
   sealed trait Segment[A] extends Path[A]
   object Segment {
 
-    /** The path with no segments, also available as [[Path.empty]]. It matches a [[Location]] with no path segments. A
+    /** The path with no segments, also available as [[Path.root]]. It matches a [[Location]] with no path segments. A
       * chain ends with it unless it ends with [[All]]; the DSL adds it for you.
       */
     case object Empty extends Path.Segment[Unit] {

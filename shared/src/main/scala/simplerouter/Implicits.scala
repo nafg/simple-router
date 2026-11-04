@@ -66,11 +66,11 @@ trait ImplicitsForToSegment[In[_]] extends Implicits[In] {
       *   if `s` is empty. An empty string literal is rejected at compile time instead.
       */
     def :/:(s: String): Path.Segment.Literal[In[A]] = {
-      require(s.nonEmpty, "\"\" :/: … is not a path segment: use Path.empty for the root")
+      require(s.nonEmpty, "\"\" :/: … is not a path segment: use Path.root for the root")
       Path.Segment.Literal(s, toPath(self))
     }
 
-    /** Never compiles: it makes `"" :/: …` a compile error. The root is [[Path.empty]]. */
+    /** Never compiles: it makes `"" :/: …` a compile error. The root is [[Path.root]]. */
     def :/:(s: "")(implicit noEmptyLiteral: Path.NoEmptyLiteral): Nothing = ???
 
     /** Prepends a path segment that holds a value, as declared by `arg` */
@@ -89,11 +89,11 @@ trait ImplicitsForToQueryParameter[In[_]] extends Implicits[In] {
       *   if `s` is empty. An empty string literal is rejected at compile time instead.
       */
     def :&:(s: String): Path.Segment.Literal[In[A]] = {
-      require(s.nonEmpty, "\"\" :&: … is not a path segment: use Path.empty for the root")
+      require(s.nonEmpty, "\"\" :&: … is not a path segment: use Path.root for the root")
       Path.Segment.Literal(s, toPath(self))
     }
 
-    /** Never compiles: it makes `"" :&: …` a compile error. The root is [[Path.empty]]. */
+    /** Never compiles: it makes `"" :&: …` a compile error. The root is [[Path.root]]. */
     def :&:(s: "")(implicit noEmptyLiteral: Path.NoEmptyLiteral): Nothing = ???
 
     /** Prepends a path segment that holds a value, as `:/:` does */
