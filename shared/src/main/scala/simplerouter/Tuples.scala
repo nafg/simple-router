@@ -35,7 +35,11 @@ object Tuples extends TupleSyntax
   * @param split
   *   the `A` and `B` of a `C`, the inverse of `join`
   */
-final class TupleConcat[A, B, C] private (val join: (A, B) => C, val split: C => (A, B))
+final class TupleConcat[A, B, C] private (val join: (A, B) => C, val split: C => (A, B)) {
+
+  /** Matches a `C` as its `A` and `B`, as [[split]] gives them */
+  def unapply(c: C): Some[(A, B)] = Some(split(c))
+}
 
 object TupleConcat {
   implicit def unit[B]: TupleConcat[Unit, B, B] = new TupleConcat((_, b) => b, ((), _))

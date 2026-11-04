@@ -121,6 +121,14 @@ class RoutingTests extends AnyFunSuite with Matchers with Inside {
     userPosts.parse(Location("users" :: "42" :: Nil)) should equal(None)
   }
 
+  test("A TupleConcat matches a concatenated value as its two parts") {
+    val prefix = "users" :/: Param[Long]
+    val tail   = "posts" :&: Param[Int]("page")
+    val concat = implicitly[TupleConcat[Long ->: Unit, Option[Int] ->: Unit, Long ->: Option[Int] ->: Unit]]
+    val route  = (prefix ++ tail) >>* { case concat(id ->: (), page ->: ()) => (id, page) }
+    route.run(Location("users" :: "42" :: "posts" :: Nil, List("page" -> "2"))) should equal((42L, Some(2)))
+  }
+
   test("++ can add a tail whose value isn't a tuple") {
     case class Page(number: Option[Int], tags: List[String])
     val page  = (Param[Int]("page") :&: Param.repeatable[String]("tag"))
