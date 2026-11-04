@@ -50,7 +50,7 @@ trait ImplicitsForToPath[In[_]] extends Implicits[In] {
   /** `>>` for a path without parameters. The handler is the route's value itself, evaluated once, when the route is
     * created.
     */
-  abstract class Path0HandlerSyntaxBase(self: From[Unit]) extends PathNHandlerSyntax(self) {
+  abstract class Path0HandlerSyntaxBase(self: From[Unit]) extends PathNHandlerSyntax[Unit](self) {
     override type F[Z] = Z
     override protected def uncurry[Z](f: F[Z]) = _ => f
   }
@@ -120,27 +120,28 @@ trait PathCompanionImplicits
   override protected type From[A] = Path[A]
   override protected def toPath[A](from: Path[A]) = from
 
-  implicit class Path0HandlerSyntax(self: Path[Unit])                   extends Path0HandlerSyntaxBase(self)
-  implicit class Path1HandlerSyntax[Y](self: Path[Y ->: Unit])          extends PathNHandlerSyntax(self) {
+  implicit class Path0HandlerSyntax(self: Path[Unit])          extends Path0HandlerSyntaxBase(self)
+  implicit class Path1HandlerSyntax[Y](self: Path[Y ->: Unit]) extends PathNHandlerSyntax[Y ->: Unit](self) {
     override type F[Z] = Y => Z
     override protected def uncurry[Z](f: F[Z]) = { case y ->: () => f(y) }
   }
-  implicit class Path2HandlerSyntax[Y, X](self: Path[X ->: Y ->: Unit]) extends PathNHandlerSyntax(self) {
+  implicit class Path2HandlerSyntax[Y, X](self: Path[X ->: Y ->: Unit])
+      extends PathNHandlerSyntax[X ->: Y ->: Unit](self) {
     override type F[Z] = X => Y => Z
     override protected def uncurry[Z](f: F[Z]) = { case x ->: y ->: () => f(x)(y) }
   }
   implicit class Path3HandlerSyntax[Y, X, W](self: Path[W ->: X ->: Y ->: Unit])
-      extends PathNHandlerSyntax(self) {
+      extends PathNHandlerSyntax[W ->: X ->: Y ->: Unit](self) {
     override type F[Z] = W => X => Y => Z
     override protected def uncurry[Z](f: F[Z]) = { case w ->: x ->: y ->: () => f(w)(x)(y) }
   }
   implicit class Path4HandlerSyntax[Y, X, W, V](self: Path[V ->: W ->: X ->: Y ->: Unit])
-      extends PathNHandlerSyntax(self) {
+      extends PathNHandlerSyntax[V ->: W ->: X ->: Y ->: Unit](self) {
     override type F[Z] = V => W => X => Y => Z
     override protected def uncurry[Z](f: F[Z]) = { case v ->: w ->: x ->: y ->: () => f(v)(w)(x)(y) }
   }
   implicit class Path5HandlerSyntax[Y, X, W, V, U](self: Path[U ->: V ->: W ->: X ->: Y ->: Unit])
-      extends PathNHandlerSyntax(self) {
+      extends PathNHandlerSyntax[U ->: V ->: W ->: X ->: Y ->: Unit](self) {
     override type F[Z] = U => V => W => X => Y => Z
     override protected def uncurry[Z](f: F[Z]) = { case u ->: v ->: w ->: x ->: y ->: () =>
       f(u)(v)(w)(x)(y)
@@ -172,7 +173,7 @@ trait PathCompanionImplicits
 
 /** Adds `>>` to a single [[Param]], which stands for a path holding only that parameter */
 trait ImplicitsForTuple2Path[In0[_]] extends ImplicitsForToPath[λ[a => In0[a] ->: Unit]] {
-  implicit class ParamHandlerSyntax[Y](self: From[Y]) extends PathNHandlerSyntax(self) {
+  implicit class ParamHandlerSyntax[Y](self: From[Y]) extends PathNHandlerSyntax[Y](self) {
     override type F[Z] = In0[Y] => Z
     override protected def uncurry[Z](f: F[Z]) = { case y ->: () => f(y) }
   }

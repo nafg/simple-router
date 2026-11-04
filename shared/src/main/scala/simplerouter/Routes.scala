@@ -18,7 +18,13 @@ trait Routes[+A] {
     * order; the first route whose path matches it and whose handler returns a value gives the result. It is not defined
     * for a location no route matches.
     */
-  def run: PartialFunction[Location, A]
+  final def run: PartialFunction[Location, A] = {
+    val matchNormalized = runNormalized.lift
+    Function.unlift(loc => matchNormalized(loc.normalized))
+  }
+
+  /** [[run]] for a location that is already [[Location.normalized normalized]] */
+  protected[simplerouter] def runNormalized: PartialFunction[Location, A]
 
   /** These routes, with `f` applied to each value they yield. They match the same locations.
     *
@@ -40,14 +46,15 @@ trait Routes[+A] {
   * matches if `handler` returns `None`. The DSL operators `>>`, `>>*` and `>>*?` create one.
   */
 case class Route[A, +R](path: Path[A], handler: A => Option[R]) extends Routes[R] {
-  override def run: PartialFunction[Location, R] = Function.unlift(path.run(handler))
+  override protected[simplerouter] def runNormalized: PartialFunction[Location, R] =
+    Function.unlift(path.parseNormalized(_).flatMap(handler))
   override def map[R2](f: R => R2): Route[A, R2] = new Route[A, R2](path, handler.andThen(_.map(f)))
 }
 
 /** [[Routes]] that try each of `routes` in order */
 case class RouteSeq[+A](routes: Seq[Routes[A]]) extends Routes[A] {
-  override def run: PartialFunction[Location, A] = routes
-    .foldLeft(PartialFunction.empty[Location, A])(_ orElse _.run)
+  override protected[simplerouter] def runNormalized: PartialFunction[Location, A] = routes
+    .foldLeft(PartialFunction.empty[Location, A])(_ orElse _.runNormalized)
 
   override def map[B](f: A => B): RouteSeq[B] = RouteSeq(routes.map(_.map(f)))
 }
